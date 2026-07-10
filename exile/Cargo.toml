@@ -4,4 +4,6 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-sherpa-onnx = "1.13.3"
+sherpa-onnx = { version = "1.13.4", default-features = false, features = ["shared"] }
+cpal = "0.18.1"
+exile-error = { path = "../exile-error" }
