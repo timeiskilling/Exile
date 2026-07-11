@@ -1,5 +1,10 @@
 use std::fmt::{self};
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RemoveModifierError {
+    ModifierNotFound,
+}
+
 #[derive(Debug)]
 pub enum ExileError {
     DeviceError { error: CpalDeviceError },

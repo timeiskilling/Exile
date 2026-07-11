@@ -223,6 +223,9 @@ dependencies = [
 [[package]]
 name = "exile-core"
 version = "0.1.0"
+dependencies = [
+ "exile-error",
+]
 
 [[package]]
 name = "exile-error"
