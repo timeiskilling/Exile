@@ -1,8 +1,10 @@
 use exile_core::item::{
-    game_definition::Game, item_editor::ItemEditor, item_instance::ItemInstance,
+    game_definition::Game,
+    item_editor::ItemEditor,
+    item_instance::{ItemInstance, ModifierInstanceId},
     item_rule::ItemRule,
 };
-use exile_error::RemoveModifierError;
+use exile_error::{RemoveModifierError, ReplaceModifierError};
 
 struct TestGame;
 
@@ -64,6 +66,16 @@ impl ItemRule<TestGame> for TestRules {
         }
 
         Ok(())
+    }
+
+    fn validate_replace_modifier(
+        &self,
+        item: &ItemInstance<TestGame>,
+        _target_id: ModifierInstanceId,
+        definition: &TestModifierDefinition,
+        modifier: &TestModifier,
+    ) -> Result<(), Self::Error> {
+        self.validate_add_modifier(item, definition, modifier)
     }
 }
 
@@ -264,6 +276,66 @@ fn removing_same_modifier_twice_returns_error() {
     let result = editor.remove_modifier(&mut item, id);
 
     assert_eq!(result, Err(RemoveModifierError::ModifierNotFound),);
+
+    assert!(item.modifiers().is_empty());
+}
+
+#[test]
+fn replaces_modifier_by_id() {
+    let mut item = create_valid_item();
+    let editor = ItemEditor::new(TestRules);
+    let definition = create_definition();
+
+    let id = editor
+        .add_modifier(&mut item, &definition, TestModifier { roll: 25 })
+        .unwrap();
+
+    let previous = editor
+        .replace_modifier(&mut item, id, &definition, TestModifier { roll: 29 })
+        .unwrap();
+
+    assert_eq!(previous.roll, 25);
+
+    assert_eq!(item.modifiers().len(), 1);
+    assert_eq!(item.modifier(id).unwrap().roll, 29);
+}
+
+#[test]
+fn failed_replace_does_not_change_modifier() {
+    let mut item = create_valid_item();
+    let editor = ItemEditor::new(TestRules);
+    let definition = create_definition();
+
+    let id = editor
+        .add_modifier(&mut item, &definition, TestModifier { roll: 25 })
+        .unwrap();
+
+    let result = editor.replace_modifier(&mut item, id, &definition, TestModifier { roll: 100 });
+
+    assert_eq!(
+        result,
+        Err(ReplaceModifierError::Validation(TestError::RollOutOfRange,)),
+    );
+
+    assert_eq!(item.modifiers().len(), 1);
+    assert_eq!(item.modifier(id).unwrap().roll, 25);
+}
+
+#[test]
+fn replacing_removed_modifier_returns_error() {
+    let mut item = create_valid_item();
+    let editor = ItemEditor::new(TestRules);
+    let definition = create_definition();
+
+    let id = editor
+        .add_modifier(&mut item, &definition, TestModifier { roll: 25 })
+        .unwrap();
+
+    editor.remove_modifier(&mut item, id).unwrap();
+
+    let result = editor.replace_modifier(&mut item, id, &definition, TestModifier { roll: 29 });
+
+    assert_eq!(result, Err(ReplaceModifierError::ModifierNotFound),);
 
     assert!(item.modifiers().is_empty());
 }

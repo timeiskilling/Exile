@@ -89,4 +89,15 @@ where
 
         Some(stored.into_modifier())
     }
+
+    pub(crate) fn replace_modifier_unchecked(
+        &mut self,
+        id: ModifierInstanceId,
+        modifier: G::ModifierInstance,
+    ) -> Option<G::ModifierInstance> {
+        let stored = self.modifiers.iter_mut().find(|stored| stored.id == id)?;
+        let previous = std::mem::replace(&mut stored.modifier, modifier);
+
+        Some(previous)
+    }
 }

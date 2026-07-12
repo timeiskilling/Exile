@@ -4,7 +4,7 @@ use crate::item::{
     item_rule::ItemRule,
 };
 
-use exile_error::RemoveModifierError;
+use exile_error::{RemoveModifierError, ReplaceModifierError};
 
 pub struct ItemEditor<R> {
     rules: R,
@@ -43,5 +43,28 @@ impl<R> ItemEditor<R> {
     {
         item.remove_modifier_unchecked(id)
             .ok_or(RemoveModifierError::ModifierNotFound)
+    }
+
+    pub fn replace_modifier<G>(
+        &self,
+        item: &mut ItemInstance<G>,
+        id: ModifierInstanceId,
+        definition: &G::ModifierDefinition,
+        modifier: G::ModifierInstance,
+    ) -> Result<G::ModifierInstance, ReplaceModifierError<<R as ItemRule<G>>::Error>>
+    where
+        G: Game,
+        R: ItemRule<G>,
+    {
+        if item.modifier(id).is_none() {
+            return Err(ReplaceModifierError::ModifierNotFound);
+        }
+
+        self.rules
+            .validate_replace_modifier(item, id, definition, &modifier)
+            .map_err(ReplaceModifierError::Validation)?;
+
+        item.replace_modifier_unchecked(id, modifier)
+            .ok_or(ReplaceModifierError::ModifierNotFound)
     }
 }

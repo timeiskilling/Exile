@@ -3,6 +3,19 @@ use std::fmt::{self};
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RemoveModifierError {
     ModifierNotFound,
+    Validation(ValidationError),
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum ReplaceModifierError<E> {
+    ModifierNotFound,
+    Validation(E),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ValidationError {
+    InvalidModifierId,
+    InvalidModifierInstanceId,
 }
 
 #[derive(Debug)]
