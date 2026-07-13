@@ -32,6 +32,7 @@ where
 
     modifiers: Vec<StoredModifier<G::ModifierInstance>>,
     next_modifier_id: u64,
+    revision: u64,
 }
 
 impl<G> ItemInstance<G>
@@ -44,6 +45,7 @@ where
             state,
             modifiers: Vec::new(),
             next_modifier_id: 0,
+            revision: 0,
         }
     }
 
@@ -72,7 +74,10 @@ where
     ) -> ModifierInstanceId {
         let id = ModifierInstanceId(self.next_modifier_id);
 
-        self.next_modifier_id += 1;
+        self.next_modifier_id = self
+            .next_modifier_id
+            .checked_add(1)
+            .expect("modifier instance id overflow");
 
         self.modifiers.push(StoredModifier { id, modifier });
 
@@ -99,5 +104,20 @@ where
         let previous = std::mem::replace(&mut stored.modifier, modifier);
 
         Some(previous)
+    }
+
+    pub fn revision(&self) -> u64 {
+        self.revision
+    }
+
+    pub(crate) fn increment_revision(&mut self) {
+        self.revision = self
+            .revision
+            .checked_add(1)
+            .expect("item revision overflow");
+    }
+
+    pub(crate) fn replace_state_unchecked(&mut self, state: G::ItemState) -> G::ItemState {
+        std::mem::replace(&mut self.state, state)
     }
 }

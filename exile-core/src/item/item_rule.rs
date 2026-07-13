@@ -23,4 +23,17 @@ where
         definition: &G::ModifierDefinition,
         modifier: &G::ModifierInstance,
     ) -> Result<(), Self::Error>;
+
+    fn validate_replace_state(
+        &self,
+        item: &ItemInstance<G>,
+        new_state: &G::ItemState,
+    ) -> Result<(), Self::Error>;
+
+    fn validate_remove_modifier(
+        &self,
+        item: &ItemInstance<G>,
+        id: ModifierInstanceId,
+        modifier: &G::ModifierInstance,
+    ) -> Result<(), Self::Error>;
 }

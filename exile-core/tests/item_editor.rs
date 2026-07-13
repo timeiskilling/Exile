@@ -3,6 +3,7 @@ use exile_core::item::{
     item_editor::ItemEditor,
     item_instance::{ItemInstance, ModifierInstanceId},
     item_rule::ItemRule,
+    item_validator::ItemValidator,
 };
 use exile_error::{RemoveModifierError, ReplaceModifierError};
 
@@ -18,6 +19,7 @@ struct TestItemBase {
     is_boots: bool,
 }
 
+#[derive(Debug, Default, PartialEq)]
 struct TestItemState {
     item_level: u16,
 }
@@ -37,11 +39,22 @@ impl Game for TestGame {
 
 struct TestRules;
 
+struct TestItemValidator;
+
+#[derive(Debug, PartialEq)]
+enum TestValidationError {
+    NotBoots,
+    InvalidItemLevel,
+    RollOutOfRange,
+}
+
 #[derive(Debug, PartialEq)]
 enum TestError {
     NotBoots,
     ItemLevelTooLow,
     RollOutOfRange,
+    InvalidItemLevel,
+    ModifierCannotBeRemoved,
 }
 
 impl ItemRule<TestGame> for TestRules {
@@ -76,6 +89,54 @@ impl ItemRule<TestGame> for TestRules {
         modifier: &TestModifier,
     ) -> Result<(), Self::Error> {
         self.validate_add_modifier(item, definition, modifier)
+    }
+
+    fn validate_replace_state(
+        &self,
+        _item: &ItemInstance<TestGame>,
+        new_state: &<TestGame as Game>::ItemState,
+    ) -> Result<(), Self::Error> {
+        if new_state.item_level == 0 {
+            return Err(TestError::InvalidItemLevel);
+        }
+        Ok(())
+    }
+
+    fn validate_remove_modifier(
+        &self,
+        _item: &ItemInstance<TestGame>,
+        _id: ModifierInstanceId,
+        modifier: &TestModifier,
+    ) -> Result<(), Self::Error> {
+        if modifier.roll == 30 {
+            return Err(TestError::ModifierCannotBeRemoved);
+        }
+
+        Ok(())
+    }
+}
+
+impl ItemValidator<TestGame> for TestItemValidator {
+    type Error = TestValidationError;
+
+    fn validate_item(&self, item: &ItemInstance<TestGame>) -> Result<(), Self::Error> {
+        if !item.base().is_boots {
+            return Err(TestValidationError::NotBoots);
+        }
+
+        if item.state().item_level == 0 {
+            return Err(TestValidationError::InvalidItemLevel);
+        }
+
+        for stored in item.modifiers() {
+            let modifier = stored.modifier();
+
+            if modifier.roll < 20 || modifier.roll > 30 {
+                return Err(TestValidationError::RollOutOfRange);
+            }
+        }
+
+        Ok(())
     }
 }
 
@@ -338,6 +399,152 @@ fn replacing_removed_modifier_returns_error() {
     assert_eq!(result, Err(ReplaceModifierError::ModifierNotFound),);
 
     assert!(item.modifiers().is_empty());
+}
+
+#[test]
+fn successful_add_increments_revision() {
+    let mut item = create_valid_item();
+    let editor = ItemEditor::new(TestRules);
+    let definition = create_definition();
+
+    assert_eq!(item.revision(), 0);
+
+    editor
+        .add_modifier(&mut item, &definition, TestModifier { roll: 27 })
+        .unwrap();
+
+    assert_eq!(item.revision(), 1);
+}
+
+#[test]
+fn failed_add_does_not_increment_revision() {
+    let mut item = create_valid_item();
+    let editor = ItemEditor::new(TestRules);
+    let definition = create_definition();
+
+    let result = editor.add_modifier(&mut item, &definition, TestModifier { roll: 100 });
+
+    assert_eq!(result, Err(TestError::RollOutOfRange));
+    assert_eq!(item.revision(), 0);
+}
+
+#[test]
+fn successful_remove_increments_revision() {
+    let mut item = create_valid_item();
+    let editor = ItemEditor::new(TestRules);
+    let definition = create_definition();
+
+    let id = editor
+        .add_modifier(&mut item, &definition, TestModifier { roll: 27 })
+        .unwrap();
+
+    assert_eq!(item.revision(), 1);
+
+    editor.remove_modifier(&mut item, id).unwrap();
+
+    assert_eq!(item.revision(), 2);
+}
+
+#[test]
+fn replaces_item_state() {
+    let mut item = create_valid_item();
+    let editor = ItemEditor::new(TestRules);
+
+    let previous = editor
+        .replace_state(&mut item, TestItemState { item_level: 90 })
+        .unwrap();
+
+    assert_eq!(previous.item_level, 86);
+    assert_eq!(item.state().item_level, 90);
+    assert_eq!(item.revision(), 1);
+}
+
+#[test]
+fn failed_state_replace_does_not_change_item() {
+    let mut item = create_valid_item();
+    let editor = ItemEditor::new(TestRules);
+
+    let revision_before = item.revision();
+
+    let result = editor.replace_state(&mut item, TestItemState { item_level: 0 });
+
+    assert_eq!(result, Err(TestError::InvalidItemLevel));
+
+    assert_eq!(item.state().item_level, 86);
+    assert_eq!(item.revision(), revision_before);
+}
+
+#[test]
+fn validates_valid_item() {
+    let mut item = create_valid_item();
+    let editor = ItemEditor::new(TestRules);
+    let definition = create_definition();
+
+    editor
+        .add_modifier(&mut item, &definition, TestModifier { roll: 27 })
+        .unwrap();
+
+    let validator = TestItemValidator;
+
+    let result = validator.validate_item(&item);
+
+    assert_eq!(result, Ok(()));
+}
+
+#[test]
+fn rejects_item_with_invalid_state() {
+    let item = ItemInstance::<TestGame>::new(
+        TestItemBase { is_boots: true },
+        TestItemState { item_level: 0 },
+    );
+
+    let validator = TestItemValidator;
+
+    let result = validator.validate_item(&item);
+
+    assert_eq!(result, Err(TestValidationError::InvalidItemLevel),);
+}
+
+#[test]
+fn removes_modifier_when_rules_allow_it() {
+    let mut item = create_valid_item();
+    let editor = ItemEditor::new(TestRules);
+    let definition = create_definition();
+
+    let id = editor
+        .add_modifier(&mut item, &definition, TestModifier { roll: 27 })
+        .unwrap();
+
+    let removed = editor.remove_modifier(&mut item, id).unwrap();
+
+    assert_eq!(removed.roll, 27);
+    assert!(item.modifier(id).is_none());
+}
+
+#[test]
+fn failed_remove_does_not_change_item() {
+    let mut item = create_valid_item();
+    let editor = ItemEditor::new(TestRules);
+    let definition = create_definition();
+
+    let id = editor
+        .add_modifier(&mut item, &definition, TestModifier { roll: 30 })
+        .unwrap();
+
+    let revision_before = item.revision();
+
+    let result = editor.remove_modifier(&mut item, id);
+
+    assert_eq!(
+        result,
+        Err(RemoveModifierError::Validation(
+            TestError::ModifierCannotBeRemoved,
+        )),
+    );
+
+    assert_eq!(item.modifier(id).unwrap().roll, 30,);
+
+    assert_eq!(item.revision(), revision_before,);
 }
 
 fn create_valid_item() -> ItemInstance<TestGame> {

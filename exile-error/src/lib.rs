@@ -1,9 +1,9 @@
 use std::fmt::{self};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum RemoveModifierError {
+pub enum RemoveModifierError<E> {
     ModifierNotFound,
-    Validation(ValidationError),
+    Validation(E),
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -16,6 +16,15 @@ pub enum ReplaceModifierError<E> {
 pub enum ValidationError {
     InvalidModifierId,
     InvalidModifierInstanceId,
+    InvalidRemoveModifierError,
+}
+
+#[derive(Debug, PartialEq)]
+enum TestError {
+    NotBoots,
+    ItemLevelTooLow,
+    RollOutOfRange,
+    InvalidItemLevel,
 }
 
 #[derive(Debug)]
