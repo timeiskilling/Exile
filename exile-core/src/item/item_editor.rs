@@ -1,9 +1,11 @@
 use exile_error::{RemoveModifierError, ReplaceModifierError};
 
-use crate::item::{
-    game_definition::Game,
-    item_instance::{ItemInstance, ModifierInstanceId},
-    item_rule::ItemRule,
+use crate::{
+    game::Game,
+    item::{
+        item_instance::{ItemInstance, ModifierInstanceId},
+        item_rule::ItemRule,
+    },
 };
 
 pub struct ItemEditor<R> {
@@ -81,11 +83,13 @@ impl<R> ItemEditor<R> {
             .validate_replace_modifier(item, id, definition, &modifier)
             .map_err(ReplaceModifierError::Validation)?;
 
-        let prev = item
+        let previous = item
             .replace_modifier_unchecked(id, modifier)
-            .ok_or(ReplaceModifierError::ModifierNotFound);
+            .expect("modifier existed before replace validation");
+
         item.increment_revision();
-        prev
+
+        Ok(previous)
     }
 
     pub fn replace_state<G>(

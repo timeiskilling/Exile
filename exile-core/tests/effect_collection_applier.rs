@@ -1,0 +1,161 @@
+mod support;
+
+use exile_core::effect::{
+    effect_applier::EffectApplier, effect_collection::EffectCollection,
+    effect_collection_applier::EffectCollectionApplier,
+    effect_collection_evaluator::EffectCollectionEvaluator, effect_entry::EffectEntry,
+    effect_source::EffectSource,
+};
+
+use support::{
+    effect::{
+        TestEffectAccumulator, TestEffectApplier, TestEffectConditionEvaluator, TestEffectContext,
+        TestPassiveNode,
+    },
+    game::{TestEffect, TestGame},
+};
+
+struct OrderedEffectSource;
+
+impl EffectSource<TestGame> for OrderedEffectSource {
+    fn collect_effects(&self) -> Vec<EffectEntry<TestGame>> {
+        vec![
+            EffectEntry::unconditional(TestEffect::AddedMaximumLife { amount: 25 }),
+            EffectEntry::unconditional(TestEffect::SetMaximumLife { value: 1 }),
+            EffectEntry::unconditional(TestEffect::IncreasedDamage { percent: 20 }),
+        ]
+    }
+}
+
+#[test]
+fn applies_all_active_effects_in_collection_order() {
+    let mut collection = EffectCollection::<TestGame>::new();
+
+    collection.collect_from_source(&OrderedEffectSource);
+
+    let condition_evaluator = EffectCollectionEvaluator::new(TestEffectConditionEvaluator);
+
+    let context = TestEffectContext {
+        enemy_current_life: 100,
+        enemy_maximum_life: 100,
+    };
+
+    let active = condition_evaluator
+        .collect_active(&collection, &context)
+        .expect("condition evaluation should succeed");
+
+    let mut accumulator = TestEffectAccumulator {
+        base_maximum_life: 100,
+        ..TestEffectAccumulator::default()
+    };
+
+    let collection_applier = EffectCollectionApplier::new(TestEffectApplier);
+
+    collection_applier
+        .apply_all(&active, &mut accumulator)
+        .expect("all effects should be applied");
+
+    assert_eq!(accumulator.added_maximum_life, 25);
+    assert_eq!(accumulator.maximum_life_override, Some(1));
+    assert_eq!(accumulator.increased_damage_percent, 20);
+}
+
+#[test]
+fn does_not_apply_inactive_effects() {
+    let mut collection = EffectCollection::<TestGame>::new();
+
+    collection.collect_from_source(&TestPassiveNode::FullLifeDamage);
+
+    let condition_evaluator = EffectCollectionEvaluator::new(TestEffectConditionEvaluator);
+
+    let context = TestEffectContext {
+        enemy_current_life: 99,
+        enemy_maximum_life: 100,
+    };
+
+    let active = condition_evaluator
+        .collect_active(&collection, &context)
+        .expect("condition evaluation should succeed");
+
+    assert!(active.is_empty());
+
+    let mut accumulator = TestEffectAccumulator::default();
+
+    let collection_applier = EffectCollectionApplier::new(TestEffectApplier);
+
+    collection_applier
+        .apply_all(&active, &mut accumulator)
+        .expect("empty active collection should succeed");
+
+    assert_eq!(accumulator.increased_damage_percent, 0);
+}
+
+#[derive(Debug, Default, PartialEq, Eq)]
+struct RecordingAccumulator {
+    applied_effects: Vec<&'static str>,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum FailingApplyError {
+    SetMaximumLifeRejected,
+}
+
+struct FailingEffectApplier;
+
+impl EffectApplier<TestGame> for FailingEffectApplier {
+    type Accumulator = RecordingAccumulator;
+    type Error = FailingApplyError;
+
+    fn apply_effect(
+        &self,
+        effect: &TestEffect,
+        accumulator: &mut Self::Accumulator,
+    ) -> Result<(), Self::Error> {
+        match effect {
+            TestEffect::ChaosImmune => {
+                accumulator.applied_effects.push("chaos_immune");
+
+                Ok(())
+            }
+
+            TestEffect::SetMaximumLife { .. } => Err(FailingApplyError::SetMaximumLifeRejected),
+
+            _ => {
+                accumulator.applied_effects.push("other");
+
+                Ok(())
+            }
+        }
+    }
+}
+
+#[test]
+fn stops_on_first_error_and_keeps_previous_changes() {
+    let mut collection = EffectCollection::<TestGame>::new();
+
+    collection.collect_from_source(&TestPassiveNode::ChaosInoculation);
+
+    let condition_evaluator = EffectCollectionEvaluator::new(TestEffectConditionEvaluator);
+
+    let context = TestEffectContext {
+        enemy_current_life: 100,
+        enemy_maximum_life: 100,
+    };
+
+    let active = condition_evaluator
+        .collect_active(&collection, &context)
+        .expect("condition evaluation should succeed");
+
+    let mut accumulator = RecordingAccumulator::default();
+
+    let collection_applier = EffectCollectionApplier::new(FailingEffectApplier);
+
+    let result = collection_applier.apply_all(&active, &mut accumulator);
+
+    assert!(matches!(
+        result,
+        Err(FailingApplyError::SetMaximumLifeRejected)
+    ));
+
+    assert_eq!(accumulator.applied_effects, vec!["chaos_immune"],);
+}

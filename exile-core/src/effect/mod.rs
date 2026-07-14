@@ -1,28 +1,11 @@
-#[derive(Debug, Clone)]
-pub enum Effect {
-    Add {
-        stat: StatId,
-        value: f64,
-    },
-
-    Multiply {
-        stat: StatId,
-        factor: f64,
-    },
-
-    Set {
-        stat: StatId,
-        value: f64,
-    },
-
-    Clamp {
-        stat: StatId,
-        min: Option<f64>,
-        max: Option<f64>,
-    },
-
-    Custom {
-        mechanic: MechanicId,
-        payload: DataValue,
-    },
-}
+pub mod active_effect_collection;
+pub mod effect_accumulator_finalizer;
+pub mod effect_applier;
+pub mod effect_calculator;
+pub mod effect_collection;
+pub mod effect_collection_applier;
+pub mod effect_collection_evaluator;
+pub mod effect_condition_evaluator;
+pub mod effect_entry;
+pub mod effect_source;
+pub mod modifier_effect_resolver;

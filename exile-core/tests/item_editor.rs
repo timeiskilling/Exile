@@ -1,144 +1,11 @@
+mod support;
+
 use exile_core::item::{
-    game_definition::Game,
-    item_editor::ItemEditor,
-    item_instance::{ItemInstance, ModifierInstanceId},
-    item_rule::ItemRule,
-    item_validator::ItemValidator,
+    item_editor::ItemEditor, item_instance::ItemInstance, item_validator::ItemValidator,
 };
 use exile_error::{RemoveModifierError, ReplaceModifierError};
 
-struct TestGame;
-
-struct TestModifierDefinition {
-    required_item_level: u16,
-    min_roll: u16,
-    max_roll: u16,
-}
-
-struct TestItemBase {
-    is_boots: bool,
-}
-
-#[derive(Debug, Default, PartialEq)]
-struct TestItemState {
-    item_level: u16,
-}
-
-#[derive(Debug, PartialEq)]
-struct TestModifier {
-    roll: u16,
-}
-
-impl Game for TestGame {
-    type ItemBase = TestItemBase;
-    type ItemState = TestItemState;
-
-    type ModifierDefinition = TestModifierDefinition;
-    type ModifierInstance = TestModifier;
-}
-
-struct TestRules;
-
-struct TestItemValidator;
-
-#[derive(Debug, PartialEq)]
-enum TestValidationError {
-    NotBoots,
-    InvalidItemLevel,
-    RollOutOfRange,
-}
-
-#[derive(Debug, PartialEq)]
-enum TestError {
-    NotBoots,
-    ItemLevelTooLow,
-    RollOutOfRange,
-    InvalidItemLevel,
-    ModifierCannotBeRemoved,
-}
-
-impl ItemRule<TestGame> for TestRules {
-    type Error = TestError;
-
-    fn validate_add_modifier(
-        &self,
-        item: &ItemInstance<TestGame>,
-        definition: &TestModifierDefinition,
-        modifier: &TestModifier,
-    ) -> Result<(), Self::Error> {
-        if !item.base().is_boots {
-            return Err(TestError::NotBoots);
-        }
-
-        if item.state().item_level < definition.required_item_level {
-            return Err(TestError::ItemLevelTooLow);
-        }
-
-        if modifier.roll < definition.min_roll || modifier.roll > definition.max_roll {
-            return Err(TestError::RollOutOfRange);
-        }
-
-        Ok(())
-    }
-
-    fn validate_replace_modifier(
-        &self,
-        item: &ItemInstance<TestGame>,
-        _target_id: ModifierInstanceId,
-        definition: &TestModifierDefinition,
-        modifier: &TestModifier,
-    ) -> Result<(), Self::Error> {
-        self.validate_add_modifier(item, definition, modifier)
-    }
-
-    fn validate_replace_state(
-        &self,
-        _item: &ItemInstance<TestGame>,
-        new_state: &<TestGame as Game>::ItemState,
-    ) -> Result<(), Self::Error> {
-        if new_state.item_level == 0 {
-            return Err(TestError::InvalidItemLevel);
-        }
-        Ok(())
-    }
-
-    fn validate_remove_modifier(
-        &self,
-        _item: &ItemInstance<TestGame>,
-        _id: ModifierInstanceId,
-        modifier: &TestModifier,
-    ) -> Result<(), Self::Error> {
-        if modifier.roll == 30 {
-            return Err(TestError::ModifierCannotBeRemoved);
-        }
-
-        Ok(())
-    }
-}
-
-impl ItemValidator<TestGame> for TestItemValidator {
-    type Error = TestValidationError;
-
-    fn validate_item(&self, item: &ItemInstance<TestGame>) -> Result<(), Self::Error> {
-        if !item.base().is_boots {
-            return Err(TestValidationError::NotBoots);
-        }
-
-        if item.state().item_level == 0 {
-            return Err(TestValidationError::InvalidItemLevel);
-        }
-
-        for stored in item.modifiers() {
-            let modifier = stored.modifier();
-
-            if modifier.roll < 20 || modifier.roll > 30 {
-                return Err(TestValidationError::RollOutOfRange);
-            }
-        }
-
-        Ok(())
-    }
-}
+use support::*;
 
 #[test]
 fn adds_valid_modifier() {
@@ -148,6 +15,7 @@ fn adds_valid_modifier() {
     );
 
     let definition = TestModifierDefinition {
+        kind: TestModifierKind::MovementSpeed,
         required_item_level: 75,
         min_roll: 20,
         max_roll: 30,
@@ -172,6 +40,7 @@ fn rejects_modifier_for_non_boots() {
     );
 
     let definition = TestModifierDefinition {
+        kind: TestModifierKind::MovementSpeed,
         required_item_level: 75,
         min_roll: 20,
         max_roll: 30,
@@ -182,7 +51,7 @@ fn rejects_modifier_for_non_boots() {
     let result = editor.add_modifier(&mut item, &definition, TestModifier { roll: 27 });
 
     assert!(result.is_err());
-    assert_eq!(result.unwrap_err(), TestError::NotBoots);
+    assert_eq!(result.unwrap_err(), TestItemRuleError::NotBoots);
     assert!(item.modifiers().is_empty());
 }
 
@@ -194,6 +63,7 @@ fn rejects_modifier_when_item_level_is_too_low() {
     );
 
     let definition = TestModifierDefinition {
+        kind: TestModifierKind::MovementSpeed,
         required_item_level: 75,
         min_roll: 20,
         max_roll: 30,
@@ -203,7 +73,7 @@ fn rejects_modifier_when_item_level_is_too_low() {
 
     let result = editor.add_modifier(&mut item, &definition, TestModifier { roll: 27 });
 
-    assert_eq!(result, Err(TestError::ItemLevelTooLow),);
+    assert_eq!(result, Err(TestItemRuleError::ItemLevelTooLow),);
 
     assert!(item.modifiers().is_empty());
 }
@@ -216,6 +86,7 @@ fn rejects_roll_below_minimum() {
     );
 
     let definition = TestModifierDefinition {
+        kind: TestModifierKind::MovementSpeed,
         required_item_level: 75,
         min_roll: 20,
         max_roll: 30,
@@ -225,7 +96,7 @@ fn rejects_roll_below_minimum() {
 
     let result = editor.add_modifier(&mut item, &definition, TestModifier { roll: 19 });
 
-    assert_eq!(result, Err(TestError::RollOutOfRange),);
+    assert_eq!(result, Err(TestItemRuleError::RollOutOfRange),);
 
     assert!(item.modifiers().is_empty());
 }
@@ -238,6 +109,7 @@ fn rejects_roll_above_maximum() {
     );
 
     let definition = TestModifierDefinition {
+        kind: TestModifierKind::MovementSpeed,
         required_item_level: 75,
         min_roll: 20,
         max_roll: 30,
@@ -247,7 +119,7 @@ fn rejects_roll_above_maximum() {
 
     let result = editor.add_modifier(&mut item, &definition, TestModifier { roll: 31 });
 
-    assert_eq!(result, Err(TestError::RollOutOfRange),);
+    assert_eq!(result, Err(TestItemRuleError::RollOutOfRange),);
 
     assert!(item.modifiers().is_empty());
 }
@@ -260,6 +132,7 @@ fn failed_add_does_not_change_existing_modifiers() {
     );
 
     let definition = TestModifierDefinition {
+        kind: TestModifierKind::MovementSpeed,
         required_item_level: 75,
         min_roll: 20,
         max_roll: 30,
@@ -273,7 +146,7 @@ fn failed_add_does_not_change_existing_modifiers() {
 
     let result = editor.add_modifier(&mut item, &definition, TestModifier { roll: 100 });
 
-    assert_eq!(result, Err(TestError::RollOutOfRange),);
+    assert_eq!(result, Err(TestItemRuleError::RollOutOfRange),);
 
     assert_eq!(item.modifiers().len(), 1);
     assert_eq!(item.modifiers()[0].modifier().roll, 25);
@@ -287,6 +160,7 @@ fn added_modifiers_receive_unique_ids() {
     );
 
     let definition = TestModifierDefinition {
+        kind: TestModifierKind::MovementSpeed,
         required_item_level: 75,
         min_roll: 20,
         max_roll: 30,
@@ -375,7 +249,9 @@ fn failed_replace_does_not_change_modifier() {
 
     assert_eq!(
         result,
-        Err(ReplaceModifierError::Validation(TestError::RollOutOfRange,)),
+        Err(ReplaceModifierError::Validation(
+            TestItemRuleError::RollOutOfRange,
+        )),
     );
 
     assert_eq!(item.modifiers().len(), 1);
@@ -424,7 +300,7 @@ fn failed_add_does_not_increment_revision() {
 
     let result = editor.add_modifier(&mut item, &definition, TestModifier { roll: 100 });
 
-    assert_eq!(result, Err(TestError::RollOutOfRange));
+    assert_eq!(result, Err(TestItemRuleError::RollOutOfRange));
     assert_eq!(item.revision(), 0);
 }
 
@@ -468,7 +344,7 @@ fn failed_state_replace_does_not_change_item() {
 
     let result = editor.replace_state(&mut item, TestItemState { item_level: 0 });
 
-    assert_eq!(result, Err(TestError::InvalidItemLevel));
+    assert_eq!(result, Err(TestItemRuleError::InvalidItemLevel));
 
     assert_eq!(item.state().item_level, 86);
     assert_eq!(item.revision(), revision_before);
@@ -502,7 +378,7 @@ fn rejects_item_with_invalid_state() {
 
     let result = validator.validate_item(&item);
 
-    assert_eq!(result, Err(TestValidationError::InvalidItemLevel),);
+    assert_eq!(result, Err(TestItemValidationError::InvalidItemLevel),);
 }
 
 #[test]
@@ -538,7 +414,7 @@ fn failed_remove_does_not_change_item() {
     assert_eq!(
         result,
         Err(RemoveModifierError::Validation(
-            TestError::ModifierCannotBeRemoved,
+            TestItemRuleError::ModifierCannotBeRemoved,
         )),
     );
 
@@ -547,17 +423,48 @@ fn failed_remove_does_not_change_item() {
     assert_eq!(item.revision(), revision_before,);
 }
 
-fn create_valid_item() -> ItemInstance<TestGame> {
-    ItemInstance::<TestGame>::new(
-        TestItemBase { is_boots: true },
-        TestItemState { item_level: 86 },
-    )
-}
+#[test]
+fn item_modifier_full_lifecycle_preserves_invariants() {
+    let mut item = create_valid_item();
+    let editor = ItemEditor::new(TestRules);
+    let validator = TestItemValidator;
+    let definition = create_definition();
 
-fn create_definition() -> TestModifierDefinition {
-    TestModifierDefinition {
-        required_item_level: 75,
-        min_roll: 20,
-        max_roll: 30,
-    }
+    assert_eq!(item.revision(), 0);
+    assert!(item.modifiers().is_empty());
+
+    let id = editor
+        .add_modifier(&mut item, &definition, TestModifier { roll: 25 })
+        .unwrap();
+
+    assert_eq!(item.revision(), 1);
+    assert_eq!(item.modifier(id).unwrap().roll, 25);
+
+    let previous_modifier = editor
+        .replace_modifier(&mut item, id, &definition, TestModifier { roll: 29 })
+        .unwrap();
+
+    assert_eq!(previous_modifier.roll, 25);
+    assert_eq!(item.revision(), 2);
+    assert_eq!(item.modifier(id).unwrap().roll, 29);
+    assert_eq!(item.modifiers().len(), 1);
+
+    let previous_state = editor
+        .replace_state(&mut item, TestItemState { item_level: 90 })
+        .unwrap();
+
+    assert_eq!(previous_state.item_level, 86);
+    assert_eq!(item.state().item_level, 90);
+    assert_eq!(item.revision(), 3);
+
+    validator.validate_item(&item).unwrap();
+
+    let removed_modifier = editor.remove_modifier(&mut item, id).unwrap();
+
+    assert_eq!(removed_modifier.roll, 29);
+    assert_eq!(item.revision(), 4);
+    assert!(item.modifiers().is_empty());
+    assert!(item.modifier(id).is_none());
+
+    validator.validate_item(&item).unwrap();
 }

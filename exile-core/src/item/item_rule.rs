@@ -1,6 +1,6 @@
-use crate::item::{
-    game_definition::Game,
-    item_instance::{ItemInstance, ModifierInstanceId},
+use crate::{
+    game::Game,
+    item::item_instance::{ItemInstance, ModifierInstanceId},
 };
 
 pub trait ItemRule<G>

@@ -1,4 +1,4 @@
-use crate::item::{game_definition::Game, item_instance::ItemInstance};
+use crate::{game::Game, item::item_instance::ItemInstance};
 
 pub trait ItemValidator<G>
 where

@@ -4,4 +4,7 @@ pub trait Game {
 
     type ModifierDefinition;
     type ModifierInstance;
+
+    type Effect;
+    type EffectCondition;
 }

@@ -1,0 +1,57 @@
+use exile_core::game::Game;
+
+#[derive(Debug)]
+pub struct TestGame;
+
+pub struct TestModifierDefinition {
+    pub kind: TestModifierKind,
+    pub required_item_level: u16,
+    pub min_roll: u16,
+    pub max_roll: u16,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TestModifierKind {
+    MovementSpeed,
+    MaximumLife,
+    Unsupported,
+}
+
+pub struct TestItemBase {
+    pub is_boots: bool,
+}
+
+#[derive(Debug, Default, PartialEq)]
+pub struct TestItemState {
+    pub item_level: u16,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct TestModifier {
+    pub roll: u16,
+}
+
+#[derive(Debug, PartialEq)]
+pub enum TestEffect {
+    ChaosImmune,
+    SetMaximumLife { value: u32 },
+    IncreasedDamage { percent: u16 },
+    IncreasedMovementSpeed { percent: u16 },
+    AddedMaximumLife { amount: u16 },
+}
+
+#[derive(Debug, PartialEq)]
+pub enum TestEffectCondition {
+    EnemyOnFullLife,
+}
+
+impl Game for TestGame {
+    type ItemBase = TestItemBase;
+    type ItemState = TestItemState;
+
+    type ModifierDefinition = TestModifierDefinition;
+    type ModifierInstance = TestModifier;
+
+    type Effect = TestEffect;
+    type EffectCondition = TestEffectCondition;
+}

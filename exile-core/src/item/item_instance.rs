@@ -1,4 +1,4 @@
-use super::game_definition::Game;
+use crate::game::Game;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ModifierInstanceId(u64);
