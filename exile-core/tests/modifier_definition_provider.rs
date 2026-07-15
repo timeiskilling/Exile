@@ -3,10 +3,11 @@ mod support;
 use exile_core::item::ModifierDefinitionProvider;
 
 use support::{
-    game::{TestModifierDefinition, TestModifierKind},
+    game::TestModifierKind,
     item::{TestModifierDefinitionProvider, TestModifierDefinitionProviderError},
 };
 
+use crate::support::{maximum_life_definition, movement_speed_definition};
 
 #[test]
 fn returns_definition_by_id() {
