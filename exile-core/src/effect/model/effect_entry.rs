@@ -1,4 +1,4 @@
-use crate::{effect::effect_condition_evaluator::EffectConditionEvaluator, game::Game};
+use crate::{effect::EffectConditionEvaluator, game::Game};
 
 #[derive(Debug, PartialEq)]
 pub struct EffectEntry<G>

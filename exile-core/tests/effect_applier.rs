@@ -1,6 +1,6 @@
 mod support;
 
-use exile_core::effect::effect_applier::EffectApplier;
+use exile_core::effect::EffectApplier;
 
 use support::{
     effect::{TestEffectAccumulator, TestEffectApplier},

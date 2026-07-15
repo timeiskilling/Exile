@@ -1,6 +1,9 @@
+#![allow(dead_code)]
+
 use exile_core::{
     game::Game,
     item::{
+        ModifierDefinitionProvider,
         item_instance::{ItemInstance, ModifierInstanceId},
         item_rule::ItemRule,
         item_validator::ItemValidator,
@@ -19,6 +22,7 @@ pub enum TestItemRuleError {
     NotBoots,
     ItemLevelTooLow,
     RollOutOfRange,
+    InvalidModifierPayload,
     InvalidItemLevel,
     ModifierCannotBeRemoved,
 }
@@ -47,8 +51,23 @@ impl ItemRule<TestGame> for TestRules {
             return Err(TestItemRuleError::ItemLevelTooLow);
         }
 
-        if modifier.roll < definition.min_roll || modifier.roll > definition.max_roll {
-            return Err(TestItemRuleError::RollOutOfRange);
+        match (definition.kind, modifier) {
+            (
+                TestModifierKind::MovementSpeed
+                | TestModifierKind::MaximumLife
+                | TestModifierKind::Unsupported,
+                TestModifier::Rolled { roll },
+            ) => {
+                if *roll < definition.min_roll || *roll > definition.max_roll {
+                    return Err(TestItemRuleError::RollOutOfRange);
+                }
+            }
+
+            (TestModifierKind::GrantsChaosInoculation, TestModifier::NoRoll) => {}
+
+            _ => {
+                return Err(TestItemRuleError::InvalidModifierPayload);
+            }
         }
 
         Ok(())
@@ -81,7 +100,7 @@ impl ItemRule<TestGame> for TestRules {
         _id: ModifierInstanceId,
         modifier: &TestModifier,
     ) -> Result<(), Self::Error> {
-        if modifier.roll == 30 {
+        if matches!(modifier, TestModifier::Rolled { roll: 30 }) {
             return Err(TestItemRuleError::ModifierCannotBeRemoved);
         }
 
@@ -104,7 +123,9 @@ impl ItemValidator<TestGame> for TestItemValidator {
         for stored in item.modifiers() {
             let modifier = stored.modifier();
 
-            if modifier.roll < 20 || modifier.roll > 30 {
+            if let TestModifier::Rolled { roll } = modifier
+                && (*roll < 20 || *roll > 30)
+            {
                 return Err(TestItemValidationError::RollOutOfRange);
             }
         }
@@ -126,5 +147,58 @@ pub fn create_definition() -> TestModifierDefinition {
         required_item_level: 75,
         min_roll: 20,
         max_roll: 30,
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum TestModifierDefinitionProviderError {
+    NotFound(TestModifierKind),
+}
+
+pub struct TestModifierDefinitionProvider {
+    definitions: Vec<TestModifierDefinition>,
+}
+
+impl TestModifierDefinitionProvider {
+    pub fn new(definitions: Vec<TestModifierDefinition>) -> Self {
+        Self { definitions }
+    }
+}
+
+impl ModifierDefinitionProvider<TestGame> for TestModifierDefinitionProvider {
+    type Error = TestModifierDefinitionProviderError;
+
+    fn definition(&self, id: &TestModifierKind) -> Result<&TestModifierDefinition, Self::Error> {
+        self.definitions
+            .iter()
+            .find(|definition| definition.kind == *id)
+            .ok_or(TestModifierDefinitionProviderError::NotFound(*id))
+    }
+}
+
+pub fn movement_speed_definition() -> TestModifierDefinition {
+    TestModifierDefinition {
+        kind: TestModifierKind::MovementSpeed,
+        required_item_level: 75,
+        min_roll: 20,
+        max_roll: 30,
+    }
+}
+
+pub fn maximum_life_definition() -> TestModifierDefinition {
+    TestModifierDefinition {
+        kind: TestModifierKind::MaximumLife,
+        required_item_level: 1,
+        min_roll: 10,
+        max_roll: 25,
+    }
+}
+
+pub fn grants_chaos_inoculation_definition() -> TestModifierDefinition {
+    TestModifierDefinition {
+        kind: TestModifierKind::GrantsChaosInoculation,
+        required_item_level: 1,
+        min_roll: 0,
+        max_roll: 0,
     }
 }

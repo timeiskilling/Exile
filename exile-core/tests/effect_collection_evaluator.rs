@@ -1,8 +1,6 @@
 mod support;
 
-use exile_core::effect::{
-    effect_collection::EffectCollection, effect_collection_evaluator::EffectCollectionEvaluator,
-};
+use exile_core::effect::{EffectCollection, EffectCollectionEvaluator};
 
 use support::{
     effect::{TestEffectConditionEvaluator, TestEffectContext, TestPassiveNode},

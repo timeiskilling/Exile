@@ -1,7 +1,7 @@
 use exile_error::{RemoveModifierError, ReplaceModifierError};
 
 use crate::{
-    game::Game,
+    game::{Game, ModifierDefinitionIdentity},
     item::{
         item_instance::{ItemInstance, ModifierInstanceId},
         item_rule::ItemRule,
@@ -30,7 +30,10 @@ impl<R> ItemEditor<R> {
         self.rules
             .validate_add_modifier(item, definition, &modifier)?;
 
-        let id = item.push_modifier_unchecked(modifier);
+        let definition_id = definition.modifier_definition_id();
+
+        let id = item.push_modifier_unchecked(definition_id, modifier);
+
         item.increment_revision();
 
         Ok(id)
@@ -83,8 +86,10 @@ impl<R> ItemEditor<R> {
             .validate_replace_modifier(item, id, definition, &modifier)
             .map_err(ReplaceModifierError::Validation)?;
 
+        let definition_id = definition.modifier_definition_id();
+
         let previous = item
-            .replace_modifier_unchecked(id, modifier)
+            .replace_modifier_unchecked(id, definition_id, modifier)
             .expect("modifier existed before replace validation");
 
         item.increment_revision();

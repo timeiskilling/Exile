@@ -2,9 +2,7 @@ mod support;
 
 use std::convert::Infallible;
 
-use exile_core::effect::{
-    effect_condition_evaluator::EffectConditionEvaluator, effect_entry::EffectEntry,
-};
+use exile_core::effect::{EffectConditionEvaluator, EffectEntry};
 
 use support::{
     effect::{TestEffectConditionEvaluator, TestEffectContext},

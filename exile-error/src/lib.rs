@@ -19,14 +19,6 @@ pub enum ValidationError {
     InvalidRemoveModifierError,
 }
 
-#[derive(Debug, PartialEq)]
-enum TestError {
-    NotBoots,
-    ItemLevelTooLow,
-    RollOutOfRange,
-    InvalidItemLevel,
-}
-
 #[derive(Debug)]
 pub enum ExileError {
     DeviceError { error: CpalDeviceError },

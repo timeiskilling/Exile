@@ -13,7 +13,7 @@ fn validates_valid_item() {
     let definition = create_definition();
 
     editor
-        .add_modifier(&mut item, &definition, TestModifier { roll: 27 })
+        .add_modifier(&mut item, &definition, TestModifier::Rolled { roll: 27 })
         .unwrap();
 
     let validator = TestItemValidator;

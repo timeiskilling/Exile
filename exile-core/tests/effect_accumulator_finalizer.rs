@@ -1,6 +1,6 @@
 mod support;
 
-use exile_core::effect::effect_accumulator_finalizer::EffectAccumulatorFinalizer;
+use exile_core::effect::EffectAccumulatorFinalizer;
 
 use support::effect::{
     TestEffectAccumulator, TestEffectAccumulatorFinalizer, TestEffectFinalizeError,

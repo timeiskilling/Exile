@@ -4,14 +4,19 @@ use crate::game::Game;
 pub struct ModifierInstanceId(u64);
 
 #[derive(Debug)]
-pub struct StoredModifier<M> {
+pub struct StoredModifier<D, M> {
     id: ModifierInstanceId,
+    definition_id: D,
     modifier: M,
 }
 
-impl<M> StoredModifier<M> {
+impl<D, M> StoredModifier<D, M> {
     pub fn id(&self) -> ModifierInstanceId {
         self.id
+    }
+
+    pub fn definition_id(&self) -> &D {
+        &self.definition_id
     }
 
     pub fn modifier(&self) -> &M {
@@ -30,7 +35,7 @@ where
     base: G::ItemBase,
     state: G::ItemState,
 
-    modifiers: Vec<StoredModifier<G::ModifierInstance>>,
+    modifiers: Vec<StoredModifier<G::ModifierDefinitionId, G::ModifierInstance>>,
     next_modifier_id: u64,
     revision: u64,
 }
@@ -57,19 +62,24 @@ where
         &self.state
     }
 
-    pub fn modifiers(&self) -> &[StoredModifier<G::ModifierInstance>] {
+    pub fn modifiers(&self) -> &[StoredModifier<G::ModifierDefinitionId, G::ModifierInstance>] {
         &self.modifiers
     }
 
     pub fn modifier(&self, id: ModifierInstanceId) -> Option<&G::ModifierInstance> {
-        self.modifiers
-            .iter()
-            .find(|entry| entry.id == id)
-            .map(|entry| &entry.modifier)
+        self.stored_modifier(id).map(StoredModifier::modifier)
+    }
+
+    pub fn stored_modifier(
+        &self,
+        id: ModifierInstanceId,
+    ) -> Option<&StoredModifier<G::ModifierDefinitionId, G::ModifierInstance>> {
+        self.modifiers.iter().find(|stored| stored.id == id)
     }
 
     pub(crate) fn push_modifier_unchecked(
         &mut self,
+        definition_id: G::ModifierDefinitionId,
         modifier: G::ModifierInstance,
     ) -> ModifierInstanceId {
         let id = ModifierInstanceId(self.next_modifier_id);
@@ -79,7 +89,11 @@ where
             .checked_add(1)
             .expect("modifier instance id overflow");
 
-        self.modifiers.push(StoredModifier { id, modifier });
+        self.modifiers.push(StoredModifier {
+            id,
+            definition_id,
+            modifier,
+        });
 
         id
     }
@@ -98,9 +112,13 @@ where
     pub(crate) fn replace_modifier_unchecked(
         &mut self,
         id: ModifierInstanceId,
+        definition_id: G::ModifierDefinitionId,
         modifier: G::ModifierInstance,
     ) -> Option<G::ModifierInstance> {
         let stored = self.modifiers.iter_mut().find(|stored| stored.id == id)?;
+
+        stored.definition_id = definition_id;
+
         let previous = std::mem::replace(&mut stored.modifier, modifier);
 
         Some(previous)

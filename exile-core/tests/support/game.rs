@@ -1,4 +1,5 @@
-use exile_core::game::Game;
+#![allow(dead_code)]
+use exile_core::game::{Game, ModifierDefinitionIdentity};
 
 #[derive(Debug)]
 pub struct TestGame;
@@ -14,6 +15,7 @@ pub struct TestModifierDefinition {
 pub enum TestModifierKind {
     MovementSpeed,
     MaximumLife,
+    GrantsChaosInoculation,
     Unsupported,
 }
 
@@ -26,9 +28,11 @@ pub struct TestItemState {
     pub item_level: u16,
 }
 
-#[derive(Debug, PartialEq)]
-pub struct TestModifier {
-    pub roll: u16,
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TestModifier {
+    Rolled { roll: u16 },
+
+    NoRoll,
 }
 
 #[derive(Debug, PartialEq)]
@@ -45,10 +49,19 @@ pub enum TestEffectCondition {
     EnemyOnFullLife,
 }
 
+impl ModifierDefinitionIdentity for TestModifierDefinition {
+    type Id = TestModifierKind;
+
+    fn modifier_definition_id(&self) -> Self::Id {
+        self.kind
+    }
+}
+
 impl Game for TestGame {
     type ItemBase = TestItemBase;
     type ItemState = TestItemState;
 
+    type ModifierDefinitionId = TestModifierKind;
     type ModifierDefinition = TestModifierDefinition;
     type ModifierInstance = TestModifier;
 

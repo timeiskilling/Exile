@@ -1,6 +1,6 @@
 mod support;
 
-use exile_core::effect::effect_source::EffectSource;
+use exile_core::effect::EffectSource;
 
 use support::*;
 

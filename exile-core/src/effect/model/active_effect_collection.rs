@@ -1,4 +1,4 @@
-use crate::{effect::effect_entry::EffectEntry, game::Game};
+use crate::{effect::EffectEntry, game::Game};
 
 pub struct ActiveEffectCollection<'a, G>
 where

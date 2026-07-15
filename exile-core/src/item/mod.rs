@@ -3,3 +3,6 @@ pub mod item_instance;
 pub mod item_rule;
 pub mod item_text_parser;
 pub mod item_validator;
+mod modifier_definition_provider;
+
+pub use modifier_definition_provider::ModifierDefinitionProvider;

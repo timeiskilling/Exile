@@ -1,13 +1,9 @@
-
 mod support;
 
-use exile_core::effect::effect_condition_evaluator::EffectConditionEvaluator;
+use exile_core::effect::EffectConditionEvaluator;
 
 use support::{
-    effect::{
-        TestEffectConditionEvaluator,
-        TestEffectContext,
-    },
+    effect::{TestEffectConditionEvaluator, TestEffectContext},
     game::TestEffectCondition,
 };
 
@@ -19,10 +15,7 @@ fn condition_is_active_when_enemy_is_on_full_life() {
         enemy_maximum_life: 100,
     };
 
-    let result = evaluator.evaluate_condition(
-        &TestEffectCondition::EnemyOnFullLife,
-        &context,
-    );
+    let result = evaluator.evaluate_condition(&TestEffectCondition::EnemyOnFullLife, &context);
 
     assert!(matches!(result, Ok(true)));
 }
@@ -35,10 +28,7 @@ fn condition_is_inactive_when_enemy_is_not_on_full_life() {
         enemy_maximum_life: 100,
     };
 
-    let result = evaluator.evaluate_condition(
-        &TestEffectCondition::EnemyOnFullLife,
-        &context,
-    );
+    let result = evaluator.evaluate_condition(&TestEffectCondition::EnemyOnFullLife, &context);
 
     assert!(matches!(result, Ok(false)));
 }

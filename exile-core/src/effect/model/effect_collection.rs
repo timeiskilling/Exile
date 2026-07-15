@@ -1,10 +1,19 @@
 use crate::{
     effect::{
-        effect_entry::EffectEntry, effect_source::EffectSource,
-        modifier_effect_resolver::ModifierEffectResolver,
+        EffectEntry, EffectSource, ItemEffectCollectionError, ItemEffectCollector,
+        ModifierEffectResolver,
     },
     game::Game,
+    item::{ModifierDefinitionProvider, item_instance::ItemInstance},
 };
+
+type ItemEffectCollectionResult<P, R, G> = Result<
+    (),
+    ItemEffectCollectionError<
+        <P as ModifierDefinitionProvider<G>>::Error,
+        <R as ModifierEffectResolver<G>>::Error,
+    >,
+>;
 
 pub struct EffectCollection<G>
 where
@@ -56,6 +65,22 @@ where
         R: ModifierEffectResolver<G>,
     {
         let effects = resolver.resolve_modifier_effects(definition, modifier)?;
+
+        self.effects.extend(effects);
+
+        Ok(())
+    }
+
+    pub fn collect_from_item<P, R>(
+        &mut self,
+        collector: &ItemEffectCollector<'_, P, R>,
+        item: &ItemInstance<G>,
+    ) -> ItemEffectCollectionResult<P, R, G>
+    where
+        P: ModifierDefinitionProvider<G>,
+        R: ModifierEffectResolver<G>,
+    {
+        let effects = collector.collect(item)?;
 
         self.effects.extend(effects);
 

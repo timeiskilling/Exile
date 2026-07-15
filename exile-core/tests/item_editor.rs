@@ -21,7 +21,7 @@ fn adds_valid_modifier() {
         max_roll: 30,
     };
 
-    let modifier = TestModifier { roll: 27 };
+    let modifier = TestModifier::Rolled { roll: 27 };
 
     let editor = ItemEditor::new(TestRules);
 
@@ -29,7 +29,10 @@ fn adds_valid_modifier() {
 
     assert!(result.is_ok());
     assert_eq!(item.modifiers().len(), 1);
-    assert_eq!(item.modifiers()[0].modifier().roll, 27);
+    assert_eq!(
+        item.modifiers()[0].modifier(),
+        &TestModifier::Rolled { roll: 27 }
+    );
 }
 
 #[test]
@@ -48,7 +51,7 @@ fn rejects_modifier_for_non_boots() {
 
     let editor = ItemEditor::new(TestRules);
 
-    let result = editor.add_modifier(&mut item, &definition, TestModifier { roll: 27 });
+    let result = editor.add_modifier(&mut item, &definition, TestModifier::Rolled { roll: 27 });
 
     assert!(result.is_err());
     assert_eq!(result.unwrap_err(), TestItemRuleError::NotBoots);
@@ -71,7 +74,7 @@ fn rejects_modifier_when_item_level_is_too_low() {
 
     let editor = ItemEditor::new(TestRules);
 
-    let result = editor.add_modifier(&mut item, &definition, TestModifier { roll: 27 });
+    let result = editor.add_modifier(&mut item, &definition, TestModifier::Rolled { roll: 27 });
 
     assert_eq!(result, Err(TestItemRuleError::ItemLevelTooLow),);
 
@@ -94,7 +97,7 @@ fn rejects_roll_below_minimum() {
 
     let editor = ItemEditor::new(TestRules);
 
-    let result = editor.add_modifier(&mut item, &definition, TestModifier { roll: 19 });
+    let result = editor.add_modifier(&mut item, &definition, TestModifier::Rolled { roll: 19 });
 
     assert_eq!(result, Err(TestItemRuleError::RollOutOfRange),);
 
@@ -117,7 +120,7 @@ fn rejects_roll_above_maximum() {
 
     let editor = ItemEditor::new(TestRules);
 
-    let result = editor.add_modifier(&mut item, &definition, TestModifier { roll: 31 });
+    let result = editor.add_modifier(&mut item, &definition, TestModifier::Rolled { roll: 31 });
 
     assert_eq!(result, Err(TestItemRuleError::RollOutOfRange),);
 
@@ -141,15 +144,18 @@ fn failed_add_does_not_change_existing_modifiers() {
     let editor = ItemEditor::new(TestRules);
 
     editor
-        .add_modifier(&mut item, &definition, TestModifier { roll: 25 })
+        .add_modifier(&mut item, &definition, TestModifier::Rolled { roll: 25 })
         .unwrap();
 
-    let result = editor.add_modifier(&mut item, &definition, TestModifier { roll: 100 });
+    let result = editor.add_modifier(&mut item, &definition, TestModifier::Rolled { roll: 100 });
 
     assert_eq!(result, Err(TestItemRuleError::RollOutOfRange),);
 
     assert_eq!(item.modifiers().len(), 1);
-    assert_eq!(item.modifiers()[0].modifier().roll, 25);
+    assert_eq!(
+        item.modifiers()[0].modifier(),
+        &TestModifier::Rolled { roll: 25 }
+    );
 }
 
 #[test]
@@ -169,11 +175,11 @@ fn added_modifiers_receive_unique_ids() {
     let editor = ItemEditor::new(TestRules);
 
     let first_id = editor
-        .add_modifier(&mut item, &definition, TestModifier { roll: 25 })
+        .add_modifier(&mut item, &definition, TestModifier::Rolled { roll: 25 })
         .unwrap();
 
     let second_id = editor
-        .add_modifier(&mut item, &definition, TestModifier { roll: 27 })
+        .add_modifier(&mut item, &definition, TestModifier::Rolled { roll: 27 })
         .unwrap();
 
     assert_ne!(first_id, second_id);
@@ -186,12 +192,12 @@ fn removes_modifier_by_id() {
     let definition = create_definition();
 
     let id = editor
-        .add_modifier(&mut item, &definition, TestModifier { roll: 27 })
+        .add_modifier(&mut item, &definition, TestModifier::Rolled { roll: 27 })
         .unwrap();
 
     let removed = editor.remove_modifier(&mut item, id).unwrap();
 
-    assert_eq!(removed.roll, 27);
+    assert_eq!(removed, TestModifier::Rolled { roll: 27 });
     assert!(item.modifiers().is_empty());
     assert!(item.modifier(id).is_none());
 }
@@ -203,7 +209,7 @@ fn removing_same_modifier_twice_returns_error() {
     let definition = create_definition();
 
     let id = editor
-        .add_modifier(&mut item, &definition, TestModifier { roll: 27 })
+        .add_modifier(&mut item, &definition, TestModifier::Rolled { roll: 27 })
         .unwrap();
 
     editor.remove_modifier(&mut item, id).unwrap();
@@ -222,17 +228,22 @@ fn replaces_modifier_by_id() {
     let definition = create_definition();
 
     let id = editor
-        .add_modifier(&mut item, &definition, TestModifier { roll: 25 })
+        .add_modifier(&mut item, &definition, TestModifier::Rolled { roll: 25 })
         .unwrap();
 
     let previous = editor
-        .replace_modifier(&mut item, id, &definition, TestModifier { roll: 29 })
+        .replace_modifier(
+            &mut item,
+            id,
+            &definition,
+            TestModifier::Rolled { roll: 29 },
+        )
         .unwrap();
 
-    assert_eq!(previous.roll, 25);
+    assert_eq!(previous, TestModifier::Rolled { roll: 25 });
 
     assert_eq!(item.modifiers().len(), 1);
-    assert_eq!(item.modifier(id).unwrap().roll, 29);
+    assert_eq!(item.modifier(id), Some(&TestModifier::Rolled { roll: 29 }));
 }
 
 #[test]
@@ -242,10 +253,15 @@ fn failed_replace_does_not_change_modifier() {
     let definition = create_definition();
 
     let id = editor
-        .add_modifier(&mut item, &definition, TestModifier { roll: 25 })
+        .add_modifier(&mut item, &definition, TestModifier::Rolled { roll: 25 })
         .unwrap();
 
-    let result = editor.replace_modifier(&mut item, id, &definition, TestModifier { roll: 100 });
+    let result = editor.replace_modifier(
+        &mut item,
+        id,
+        &definition,
+        TestModifier::Rolled { roll: 100 },
+    );
 
     assert_eq!(
         result,
@@ -255,7 +271,7 @@ fn failed_replace_does_not_change_modifier() {
     );
 
     assert_eq!(item.modifiers().len(), 1);
-    assert_eq!(item.modifier(id).unwrap().roll, 25);
+    assert_eq!(item.modifier(id), Some(&TestModifier::Rolled { roll: 25 }));
 }
 
 #[test]
@@ -265,12 +281,17 @@ fn replacing_removed_modifier_returns_error() {
     let definition = create_definition();
 
     let id = editor
-        .add_modifier(&mut item, &definition, TestModifier { roll: 25 })
+        .add_modifier(&mut item, &definition, TestModifier::Rolled { roll: 25 })
         .unwrap();
 
     editor.remove_modifier(&mut item, id).unwrap();
 
-    let result = editor.replace_modifier(&mut item, id, &definition, TestModifier { roll: 29 });
+    let result = editor.replace_modifier(
+        &mut item,
+        id,
+        &definition,
+        TestModifier::Rolled { roll: 29 },
+    );
 
     assert_eq!(result, Err(ReplaceModifierError::ModifierNotFound),);
 
@@ -286,7 +307,7 @@ fn successful_add_increments_revision() {
     assert_eq!(item.revision(), 0);
 
     editor
-        .add_modifier(&mut item, &definition, TestModifier { roll: 27 })
+        .add_modifier(&mut item, &definition, TestModifier::Rolled { roll: 27 })
         .unwrap();
 
     assert_eq!(item.revision(), 1);
@@ -298,7 +319,7 @@ fn failed_add_does_not_increment_revision() {
     let editor = ItemEditor::new(TestRules);
     let definition = create_definition();
 
-    let result = editor.add_modifier(&mut item, &definition, TestModifier { roll: 100 });
+    let result = editor.add_modifier(&mut item, &definition, TestModifier::Rolled { roll: 100 });
 
     assert_eq!(result, Err(TestItemRuleError::RollOutOfRange));
     assert_eq!(item.revision(), 0);
@@ -311,7 +332,7 @@ fn successful_remove_increments_revision() {
     let definition = create_definition();
 
     let id = editor
-        .add_modifier(&mut item, &definition, TestModifier { roll: 27 })
+        .add_modifier(&mut item, &definition, TestModifier::Rolled { roll: 27 })
         .unwrap();
 
     assert_eq!(item.revision(), 1);
@@ -357,7 +378,7 @@ fn validates_valid_item() {
     let definition = create_definition();
 
     editor
-        .add_modifier(&mut item, &definition, TestModifier { roll: 27 })
+        .add_modifier(&mut item, &definition, TestModifier::Rolled { roll: 27 })
         .unwrap();
 
     let validator = TestItemValidator;
@@ -388,12 +409,12 @@ fn removes_modifier_when_rules_allow_it() {
     let definition = create_definition();
 
     let id = editor
-        .add_modifier(&mut item, &definition, TestModifier { roll: 27 })
+        .add_modifier(&mut item, &definition, TestModifier::Rolled { roll: 27 })
         .unwrap();
 
     let removed = editor.remove_modifier(&mut item, id).unwrap();
 
-    assert_eq!(removed.roll, 27);
+    assert_eq!(removed, TestModifier::Rolled { roll: 27 });
     assert!(item.modifier(id).is_none());
 }
 
@@ -404,7 +425,7 @@ fn failed_remove_does_not_change_item() {
     let definition = create_definition();
 
     let id = editor
-        .add_modifier(&mut item, &definition, TestModifier { roll: 30 })
+        .add_modifier(&mut item, &definition, TestModifier::Rolled { roll: 30 })
         .unwrap();
 
     let revision_before = item.revision();
@@ -418,7 +439,7 @@ fn failed_remove_does_not_change_item() {
         )),
     );
 
-    assert_eq!(item.modifier(id).unwrap().roll, 30,);
+    assert_eq!(item.modifier(id), Some(&TestModifier::Rolled { roll: 30 }));
 
     assert_eq!(item.revision(), revision_before,);
 }
@@ -434,19 +455,24 @@ fn item_modifier_full_lifecycle_preserves_invariants() {
     assert!(item.modifiers().is_empty());
 
     let id = editor
-        .add_modifier(&mut item, &definition, TestModifier { roll: 25 })
+        .add_modifier(&mut item, &definition, TestModifier::Rolled { roll: 25 })
         .unwrap();
 
     assert_eq!(item.revision(), 1);
-    assert_eq!(item.modifier(id).unwrap().roll, 25);
+    assert_eq!(item.modifier(id), Some(&TestModifier::Rolled { roll: 25 }));
 
     let previous_modifier = editor
-        .replace_modifier(&mut item, id, &definition, TestModifier { roll: 29 })
+        .replace_modifier(
+            &mut item,
+            id,
+            &definition,
+            TestModifier::Rolled { roll: 29 },
+        )
         .unwrap();
 
-    assert_eq!(previous_modifier.roll, 25);
+    assert_eq!(previous_modifier, TestModifier::Rolled { roll: 25 });
     assert_eq!(item.revision(), 2);
-    assert_eq!(item.modifier(id).unwrap().roll, 29);
+    assert_eq!(item.modifier(id), Some(&TestModifier::Rolled { roll: 29 }));
     assert_eq!(item.modifiers().len(), 1);
 
     let previous_state = editor
@@ -461,7 +487,7 @@ fn item_modifier_full_lifecycle_preserves_invariants() {
 
     let removed_modifier = editor.remove_modifier(&mut item, id).unwrap();
 
-    assert_eq!(removed_modifier.roll, 29);
+    assert_eq!(removed_modifier, TestModifier::Rolled { roll: 29 });
     assert_eq!(item.revision(), 4);
     assert!(item.modifiers().is_empty());
     assert!(item.modifier(id).is_none());

@@ -1,10 +1,8 @@
 mod support;
 
 use exile_core::effect::{
-    effect_applier::EffectApplier, effect_collection::EffectCollection,
-    effect_collection_applier::EffectCollectionApplier,
-    effect_collection_evaluator::EffectCollectionEvaluator, effect_entry::EffectEntry,
-    effect_source::EffectSource,
+    EffectApplier, EffectCollection, EffectCollectionApplier, EffectCollectionEvaluator,
+    EffectEntry, EffectSource,
 };
 
 use support::{

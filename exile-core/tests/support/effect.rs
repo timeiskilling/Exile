@@ -1,9 +1,9 @@
+#![allow(dead_code)]
 use std::convert::Infallible;
 
 use exile_core::effect::{
-    effect_accumulator_finalizer::EffectAccumulatorFinalizer, effect_applier::EffectApplier,
-    effect_condition_evaluator::EffectConditionEvaluator, effect_entry::EffectEntry,
-    effect_source::EffectSource, modifier_effect_resolver::ModifierEffectResolver,
+    EffectAccumulatorFactory, EffectAccumulatorFinalizer, EffectApplier, EffectConditionEvaluator,
+    EffectEntry, EffectSource, ModifierEffectResolver,
 };
 
 use super::game::{
@@ -24,6 +24,7 @@ pub struct TestModifierEffectResolver;
 #[derive(Debug, PartialEq)]
 pub enum TestEffectResolveError {
     UnsupportedModifier,
+    InvalidModifierPayload,
 }
 
 impl EffectSource<TestGame> for TestPassiveNode {
@@ -57,17 +58,33 @@ impl ModifierEffectResolver<TestGame> for TestModifierEffectResolver {
         modifier: &TestModifier,
     ) -> Result<Vec<EffectEntry<TestGame>>, Self::Error> {
         match definition.kind {
-            TestModifierKind::MovementSpeed => Ok(vec![EffectEntry::unconditional(
-                TestEffect::IncreasedMovementSpeed {
-                    percent: modifier.roll,
-                },
-            )]),
+            TestModifierKind::MovementSpeed => {
+                let TestModifier::Rolled { roll } = modifier else {
+                    return Err(TestEffectResolveError::InvalidModifierPayload);
+                };
 
-            TestModifierKind::MaximumLife => Ok(vec![EffectEntry::unconditional(
-                TestEffect::AddedMaximumLife {
-                    amount: modifier.roll,
-                },
-            )]),
+                Ok(vec![EffectEntry::unconditional(
+                    TestEffect::IncreasedMovementSpeed { percent: *roll },
+                )])
+            }
+
+            TestModifierKind::MaximumLife => {
+                let TestModifier::Rolled { roll } = modifier else {
+                    return Err(TestEffectResolveError::InvalidModifierPayload);
+                };
+
+                Ok(vec![EffectEntry::unconditional(
+                    TestEffect::AddedMaximumLife { amount: *roll },
+                )])
+            }
+
+            TestModifierKind::GrantsChaosInoculation => {
+                if !matches!(modifier, TestModifier::NoRoll) {
+                    return Err(TestEffectResolveError::InvalidModifierPayload);
+                }
+
+                Ok(TestPassiveNode::ChaosInoculation.collect_effects())
+            }
 
             TestModifierKind::Unsupported => Err(TestEffectResolveError::UnsupportedModifier),
         }
@@ -193,6 +210,27 @@ impl EffectAccumulatorFinalizer for TestEffectAccumulatorFinalizer {
             chaos_immune: accumulator.chaos_immune,
             increased_damage_percent: accumulator.increased_damage_percent,
             increased_movement_speed_percent: accumulator.increased_movement_speed_percent,
+        })
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TestCalculationInput {
+    pub base_maximum_life: u32,
+}
+
+pub struct TestEffectAccumulatorFactory;
+
+impl EffectAccumulatorFactory for TestEffectAccumulatorFactory {
+    type Input = TestCalculationInput;
+    type Accumulator = TestEffectAccumulator;
+    type Error = Infallible;
+
+    fn create(&self, input: &Self::Input) -> Result<Self::Accumulator, Self::Error> {
+        Ok(TestEffectAccumulator {
+            base_maximum_life: input.base_maximum_life,
+
+            ..TestEffectAccumulator::default()
         })
     }
 }

@@ -1,5 +1,5 @@
 use crate::{
-    effect::{active_effect_collection::ActiveEffectCollection, effect_applier::EffectApplier},
+    effect::{ActiveEffectCollection, EffectApplier},
     game::Game,
 };
 

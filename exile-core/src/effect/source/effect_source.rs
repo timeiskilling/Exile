@@ -1,4 +1,4 @@
-use crate::{effect::effect_entry::EffectEntry, game::Game};
+use crate::{effect::EffectEntry, game::Game};
 
 pub trait EffectSource<G>
 where

@@ -1,6 +1,6 @@
 mod support;
 
-use exile_core::effect::modifier_effect_resolver::ModifierEffectResolver;
+use exile_core::effect::ModifierEffectResolver;
 
 use support::*;
 
@@ -9,7 +9,7 @@ fn resolves_movement_speed_modifier() {
     let resolver = TestModifierEffectResolver;
 
     let definition = create_definition();
-    let modifier = TestModifier { roll: 27 };
+    let modifier = TestModifier::Rolled { roll: 27 };
 
     let entries = resolver
         .resolve_modifier_effects(&definition, &modifier)
@@ -34,7 +34,7 @@ fn unsupported_modifier_returns_error() {
         max_roll: 0,
     };
 
-    let modifier = TestModifier { roll: 0 };
+    let modifier = TestModifier::Rolled { roll: 0 };
 
     let result = resolver.resolve_modifier_effects(&definition, &modifier);
 
