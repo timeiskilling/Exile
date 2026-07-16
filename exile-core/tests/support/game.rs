@@ -1,6 +1,8 @@
 #![allow(dead_code)]
 use exile_core::game::{Game, ModifierDefinitionIdentity};
 
+use crate::support::TestPassiveNode;
+
 #[derive(Debug)]
 pub struct TestGame;
 
@@ -15,8 +17,19 @@ pub struct TestModifierDefinition {
 pub enum TestModifierKind {
     MovementSpeed,
     MaximumLife,
-    GrantsChaosInoculation,
+
+    AddedPhysicalDamage,
+
+    GrantsPassiveNode { node_id: TestPassiveNodeId },
+
     Unsupported,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum TestPassiveNodeId {
+    ChaosInoculation,
+    FullLifeDamage,
+    Empty,
 }
 
 pub struct TestItemBase {
@@ -32,6 +45,8 @@ pub struct TestItemState {
 pub enum TestModifier {
     Rolled { roll: u16 },
 
+    Range { min: u16, max: u16 },
+
     NoRoll,
 }
 
@@ -42,6 +57,7 @@ pub enum TestEffect {
     IncreasedDamage { percent: u16 },
     IncreasedMovementSpeed { percent: u16 },
     AddedMaximumLife { amount: u16 },
+    AddedPhysicalDamage { min: u16, max: u16 },
 }
 
 #[derive(Debug, PartialEq)]

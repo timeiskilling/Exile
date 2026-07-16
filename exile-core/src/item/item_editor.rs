@@ -3,7 +3,7 @@ use exile_error::{RemoveModifierError, ReplaceModifierError};
 use crate::{
     game::{Game, ModifierDefinitionIdentity},
     item::{
-        item_instance::{ItemInstance, ModifierInstanceId},
+        item_instance::{ItemInstance, ModifierInstanceId, Unvalidated},
         item_rule::ItemRule,
     },
 };
@@ -19,7 +19,7 @@ impl<R> ItemEditor<R> {
 
     pub fn add_modifier<G>(
         &self,
-        item: &mut ItemInstance<G>,
+        item: &mut ItemInstance<G, Unvalidated>,
         definition: &G::ModifierDefinition,
         modifier: G::ModifierInstance,
     ) -> Result<ModifierInstanceId, <R as ItemRule<G>>::Error>
@@ -41,7 +41,7 @@ impl<R> ItemEditor<R> {
 
     pub fn remove_modifier<G>(
         &self,
-        item: &mut ItemInstance<G>,
+        item: &mut ItemInstance<G, Unvalidated>,
         id: ModifierInstanceId,
     ) -> Result<G::ModifierInstance, RemoveModifierError<<R as ItemRule<G>>::Error>>
     where
@@ -69,7 +69,7 @@ impl<R> ItemEditor<R> {
 
     pub fn replace_modifier<G>(
         &self,
-        item: &mut ItemInstance<G>,
+        item: &mut ItemInstance<G, Unvalidated>,
         id: ModifierInstanceId,
         definition: &G::ModifierDefinition,
         modifier: G::ModifierInstance,
@@ -99,7 +99,7 @@ impl<R> ItemEditor<R> {
 
     pub fn replace_state<G>(
         &self,
-        item: &mut ItemInstance<G>,
+        item: &mut ItemInstance<G, Unvalidated>,
         new_state: G::ItemState,
     ) -> Result<G::ItemState, <R as ItemRule<G>>::Error>
     where

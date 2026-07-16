@@ -14,4 +14,5 @@ pub use model::{ActiveEffectCollection, EffectCollection, EffectEntry};
 
 pub use source::{
     EffectSource, ItemEffectCollectionError, ItemEffectCollector, ModifierEffectResolver,
+    PassiveNodeProvider,
 };

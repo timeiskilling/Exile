@@ -2,7 +2,7 @@ mod support;
 
 use exile_core::{
     effect::{EffectCalculator, EffectCollection, EffectCollectionEvaluator, ItemEffectCollector},
-    item::item_editor::ItemEditor,
+    item::ItemEditor,
 };
 
 use support::{
@@ -15,8 +15,8 @@ use support::{
 };
 
 use crate::support::{
-    TestEffect, TestModifierDefinitionProvider, TestRules, create_definition, create_valid_item,
-    grants_chaos_inoculation_definition, maximum_life_definition,
+    TestEffect, TestItemValidator, TestModifierDefinitionProvider, TestRules, create_definition,
+    create_valid_item, grants_chaos_inoculation_definition, maximum_life_definition,
 };
 
 fn build_effect_collection() -> EffectCollection<TestGame> {
@@ -24,7 +24,7 @@ fn build_effect_collection() -> EffectCollection<TestGame> {
 
     collection.collect_from_source(&TestPassiveNode::FullLifeDamage);
 
-    let resolver = TestModifierEffectResolver;
+    let resolver = TestModifierEffectResolver::default();
 
     let mut maximum_life_definition = create_definition();
     maximum_life_definition.kind = TestModifierKind::MaximumLife;
@@ -120,7 +120,10 @@ fn calculates_final_stats_from_item_modifiers_and_granted_node() {
         grants_chaos_inoculation_definition,
     ]);
 
-    let resolver = TestModifierEffectResolver;
+    let validator = TestItemValidator::new(&provider);
+    let item = item.validate(&validator).expect("item should be valid");
+
+    let resolver = TestModifierEffectResolver::default();
 
     let item_collector = ItemEffectCollector::new(&provider, &resolver);
 

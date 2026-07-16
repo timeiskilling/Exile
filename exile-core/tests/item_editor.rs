@@ -1,8 +1,6 @@
 mod support;
 
-use exile_core::item::{
-    item_editor::ItemEditor, item_instance::ItemInstance, item_validator::ItemValidator,
-};
+use exile_core::item::{ItemEditor, ItemInstance, ItemValidator};
 use exile_error::{RemoveModifierError, ReplaceModifierError};
 
 use support::*;
@@ -381,7 +379,9 @@ fn validates_valid_item() {
         .add_modifier(&mut item, &definition, TestModifier::Rolled { roll: 27 })
         .unwrap();
 
-    let validator = TestItemValidator;
+    let provider = TestModifierDefinitionProvider::new(vec![definition]);
+
+    let validator = TestItemValidator::new(&provider);
 
     let result = validator.validate_item(&item);
 
@@ -395,7 +395,8 @@ fn rejects_item_with_invalid_state() {
         TestItemState { item_level: 0 },
     );
 
-    let validator = TestItemValidator;
+    let provider = TestModifierDefinitionProvider::new(Vec::new());
+    let validator = TestItemValidator::new(&provider);
 
     let result = validator.validate_item(&item);
 
@@ -448,7 +449,6 @@ fn failed_remove_does_not_change_item() {
 fn item_modifier_full_lifecycle_preserves_invariants() {
     let mut item = create_valid_item();
     let editor = ItemEditor::new(TestRules);
-    let validator = TestItemValidator;
     let definition = create_definition();
 
     assert_eq!(item.revision(), 0);
@@ -459,7 +459,8 @@ fn item_modifier_full_lifecycle_preserves_invariants() {
         .unwrap();
 
     assert_eq!(item.revision(), 1);
-    assert_eq!(item.modifier(id), Some(&TestModifier::Rolled { roll: 25 }));
+
+    assert_eq!(item.modifier(id), Some(&TestModifier::Rolled { roll: 25 }),);
 
     let previous_modifier = editor
         .replace_modifier(
@@ -470,9 +471,12 @@ fn item_modifier_full_lifecycle_preserves_invariants() {
         )
         .unwrap();
 
-    assert_eq!(previous_modifier, TestModifier::Rolled { roll: 25 });
+    assert_eq!(previous_modifier, TestModifier::Rolled { roll: 25 },);
+
     assert_eq!(item.revision(), 2);
-    assert_eq!(item.modifier(id), Some(&TestModifier::Rolled { roll: 29 }));
+
+    assert_eq!(item.modifier(id), Some(&TestModifier::Rolled { roll: 29 }),);
+
     assert_eq!(item.modifiers().len(), 1);
 
     let previous_state = editor
@@ -483,11 +487,16 @@ fn item_modifier_full_lifecycle_preserves_invariants() {
     assert_eq!(item.state().item_level, 90);
     assert_eq!(item.revision(), 3);
 
+    let provider = TestModifierDefinitionProvider::new(vec![definition]);
+
+    let validator = TestItemValidator::new(&provider);
+
     validator.validate_item(&item).unwrap();
 
     let removed_modifier = editor.remove_modifier(&mut item, id).unwrap();
 
-    assert_eq!(removed_modifier, TestModifier::Rolled { roll: 29 });
+    assert_eq!(removed_modifier, TestModifier::Rolled { roll: 29 },);
+
     assert_eq!(item.revision(), 4);
     assert!(item.modifiers().is_empty());
     assert!(item.modifier(id).is_none());

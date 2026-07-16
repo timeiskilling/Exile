@@ -1,8 +1,27 @@
-use crate::game::Game;
+use std::marker::PhantomData;
 
+use crate::{game::Game, item::item_validator::ItemValidator};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Unvalidated;
+
+/// Предмет успішно пройшов повну domain-validation.
+///
+/// Такий предмет можна передавати в effect/calculation pipeline.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Validated;
+
+/// Стабільний runtime ID конкретного modifier instance.
+///
+/// Це не ID definition.
+/// Два modifiers однієї definition матимуть різні ModifierInstanceId.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ModifierInstanceId(u64);
 
+/// Modifier, який зберігається всередині предмета.
+///
+/// `definition_id` вказує, якою definition описується modifier.
+/// `modifier` зберігає конкретний runtime payload.
 #[derive(Debug)]
 pub struct StoredModifier<D, M> {
     id: ModifierInstanceId,
@@ -28,32 +47,46 @@ impl<D, M> StoredModifier<D, M> {
     }
 }
 
-pub struct ItemInstance<G>
-where
-    G: Game,
-{
+/// Runtime instance предмета.
+///
+/// `ValidationState` існує лише на рівні типів.
+/// `PhantomData` не додає runtime-даних до структури.
+///
+/// Default state — `Unvalidated`, тому:
+///
+/// ```text
+/// ItemInstance<G>
+/// ```
+///
+/// означає:
+///
+/// ```text
+/// ItemInstance<G, Unvalidated>
+/// ```
+pub struct ItemInstance<G: Game, ValidationState = Unvalidated> {
     base: G::ItemBase,
     state: G::ItemState,
 
     modifiers: Vec<StoredModifier<G::ModifierDefinitionId, G::ModifierInstance>>,
+
     next_modifier_id: u64,
     revision: u64,
+
+    validation_state: PhantomData<ValidationState>,
 }
 
-impl<G> ItemInstance<G>
+/// Методи читання, доступні для будь-якого validation state.
+///
+/// Вони працюють і з:
+///
+/// ```text
+/// ItemInstance<G, Unvalidated>
+/// ItemInstance<G, Validated>
+/// ```
+impl<G, ValidationState> ItemInstance<G, ValidationState>
 where
     G: Game,
 {
-    pub fn new(base: G::ItemBase, state: G::ItemState) -> Self {
-        Self {
-            base,
-            state,
-            modifiers: Vec::new(),
-            next_modifier_id: 0,
-            revision: 0,
-        }
-    }
-
     pub fn base(&self) -> &G::ItemBase {
         &self.base
     }
@@ -77,6 +110,90 @@ where
         self.modifiers.iter().find(|stored| stored.id == id)
     }
 
+    pub fn revision(&self) -> u64 {
+        self.revision
+    }
+
+    /// Змінює лише compile-time validation marker.
+    ///
+    /// Всі runtime-дані переміщуються без clone.
+    fn change_validation_state<NextValidationState>(self) -> ItemInstance<G, NextValidationState> {
+        ItemInstance {
+            base: self.base,
+            state: self.state,
+            modifiers: self.modifiers,
+            next_modifier_id: self.next_modifier_id,
+            revision: self.revision,
+            validation_state: PhantomData,
+        }
+    }
+}
+
+/// Створення, validation і мутації неперевіреного предмета.
+///
+/// Unchecked methods навмисно недоступні для:
+///
+/// ```text
+/// ItemInstance<G, Validated>
+/// ```
+impl<G> ItemInstance<G, Unvalidated>
+where
+    G: Game,
+{
+    /// Створює новий порожній неперевірений предмет.
+    pub fn new(base: G::ItemBase, state: G::ItemState) -> Self {
+        Self {
+            base,
+            state,
+            modifiers: Vec::new(),
+            next_modifier_id: 0,
+            revision: 0,
+            validation_state: PhantomData,
+        }
+    }
+
+    /// Створює неперевірений snapshot із готових частин.
+    ///
+    /// Призначений для:
+    ///
+    /// - text parser;
+    /// - deserialization;
+    /// - import;
+    /// - migration.
+    ///
+    /// Метод не виконує domain-validation.
+    /// Кожному modifier автоматично призначається runtime ID.
+    /// Revision залишається рівною нулю.
+    pub fn from_parts(
+        base: G::ItemBase,
+        state: G::ItemState,
+        modifiers: Vec<(G::ModifierDefinitionId, G::ModifierInstance)>,
+    ) -> Self {
+        let mut item = Self::new(base, state);
+
+        for (definition_id, modifier) in modifiers {
+            item.push_modifier_unchecked(definition_id, modifier);
+        }
+
+        item
+    }
+
+    /// Перевіряє предмет і при успіху переводить його
+    /// у compile-time стан `Validated`.
+    ///
+    /// При помилці `self` буде спожитий.
+    pub fn validate<V>(self, validator: &V) -> Result<ItemInstance<G, Validated>, V::Error>
+    where
+        V: ItemValidator<G>,
+    {
+        validator.validate_item(&self)?;
+
+        Ok(self.change_validation_state())
+    }
+
+    /// Додає modifier без domain-validation.
+    ///
+    /// Повинен викликатися лише кодом crate, наприклад ItemEditor.
     pub(crate) fn push_modifier_unchecked(
         &mut self,
         definition_id: G::ModifierDefinitionId,
@@ -98,6 +215,7 @@ where
         id
     }
 
+    /// Видаляє modifier без domain-validation.
     pub(crate) fn remove_modifier_unchecked(
         &mut self,
         id: ModifierInstanceId,
@@ -109,6 +227,9 @@ where
         Some(stored.into_modifier())
     }
 
+    /// Замінює definition ID і modifier payload.
+    ///
+    /// Повертає попередній modifier instance.
     pub(crate) fn replace_modifier_unchecked(
         &mut self,
         id: ModifierInstanceId,
@@ -124,8 +245,11 @@ where
         Some(previous)
     }
 
-    pub fn revision(&self) -> u64 {
-        self.revision
+    /// Замінює state без domain-validation.
+    ///
+    /// Повертає попередній state.
+    pub(crate) fn replace_state_unchecked(&mut self, state: G::ItemState) -> G::ItemState {
+        std::mem::replace(&mut self.state, state)
     }
 
     pub(crate) fn increment_revision(&mut self) {
@@ -134,8 +258,13 @@ where
             .checked_add(1)
             .expect("item revision overflow");
     }
+}
 
-    pub(crate) fn replace_state_unchecked(&mut self, state: G::ItemState) -> G::ItemState {
-        std::mem::replace(&mut self.state, state)
+impl<G> ItemInstance<G, Validated>
+where
+    G: Game,
+{
+    pub fn into_unvalidated(self) -> ItemInstance<G, Unvalidated> {
+        self.change_validation_state()
     }
 }

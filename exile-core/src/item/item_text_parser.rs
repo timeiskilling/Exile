@@ -1,4 +1,7 @@
-use crate::{game::Game, item::item_instance::ItemInstance};
+use crate::{
+    game::Game,
+    item::item_instance::{ItemInstance, Unvalidated},
+};
 
 pub trait ItemTextParser<G>
 where
@@ -6,5 +9,5 @@ where
 {
     type Error;
 
-    fn parse(&self, text: &str) -> Result<ItemInstance<G>, Self::Error>;
+    fn parse(&self, text: &str) -> Result<ItemInstance<G, Unvalidated>, Self::Error>;
 }

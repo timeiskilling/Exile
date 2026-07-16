@@ -2,7 +2,7 @@ mod support;
 
 use exile_core::{
     effect::{ItemEffectCollectionError, ItemEffectCollector},
-    item::item_editor::ItemEditor,
+    item::ItemEditor,
 };
 
 use support::{
@@ -12,7 +12,7 @@ use support::{
     maximum_life_definition, movement_speed_definition,
 };
 
-use crate::support::grants_chaos_inoculation_definition;
+use crate::support::{TestItemValidator, grants_chaos_inoculation_definition};
 
 #[test]
 fn collects_effects_from_all_item_modifiers_in_order() {
@@ -44,7 +44,10 @@ fn collects_effects_from_all_item_modifiers_in_order() {
         movement_speed_definition,
     ]);
 
-    let resolver = TestModifierEffectResolver;
+    let resolver = TestModifierEffectResolver::default();
+
+    let validator = TestItemValidator::new(&provider);
+    let item = item.validate(&validator).expect("item should be valid");
 
     let collector = ItemEffectCollector::new(&provider, &resolver);
 
@@ -67,15 +70,15 @@ fn collects_effects_from_all_item_modifiers_in_order() {
 
 #[test]
 fn returns_definition_provider_error_when_definition_is_missing() {
-    let mut item = create_valid_item();
+    let mut draft = create_valid_item();
     let editor = ItemEditor::new(TestRules);
 
-    let maximum_life_definition = maximum_life_definition();
+    let maximum_life_def = maximum_life_definition();
 
     editor
         .add_modifier(
-            &mut item,
-            &maximum_life_definition,
+            &mut draft,
+            &maximum_life_def,
             TestModifier::Rolled { roll: 25 },
         )
         .expect("maximum life modifier should be added");
@@ -84,17 +87,24 @@ fn returns_definition_provider_error_when_definition_is_missing() {
 
     editor
         .add_modifier(
-            &mut item,
+            &mut draft,
             &movement_speed_definition,
             TestModifier::Rolled { roll: 20 },
         )
         .expect("movement speed modifier should be added");
 
-    let provider = TestModifierDefinitionProvider::new(vec![maximum_life_definition]);
+    let validation_provider =
+        TestModifierDefinitionProvider::new(vec![maximum_life_def, movement_speed_definition]);
 
-    let resolver = TestModifierEffectResolver;
+    let validator = TestItemValidator::new(&validation_provider);
 
-    let collector = ItemEffectCollector::new(&provider, &resolver);
+    let item = draft.validate(&validator).expect("item should be valid");
+
+    let collection_provider = TestModifierDefinitionProvider::new(vec![maximum_life_definition()]);
+
+    let resolver = TestModifierEffectResolver::default();
+
+    let collector = ItemEffectCollector::new(&collection_provider, &resolver);
 
     let result = collector.collect(&item);
 
@@ -128,8 +138,9 @@ fn returns_resolver_error_for_unsupported_modifier() {
 
     let provider = TestModifierDefinitionProvider::new(vec![unsupported_definition]);
 
-    let resolver = TestModifierEffectResolver;
-
+    let resolver = TestModifierEffectResolver::default();
+    let validator = TestItemValidator::new(&provider);
+    let item = item.validate(&validator).expect("item should be valid");
     let collector = ItemEffectCollector::new(&provider, &resolver);
 
     let result = collector.collect(&item);
@@ -148,9 +159,11 @@ fn returns_empty_effects_for_item_without_modifiers() {
 
     let provider = TestModifierDefinitionProvider::new(Vec::new());
 
-    let resolver = TestModifierEffectResolver;
-
+    let resolver = TestModifierEffectResolver::default();
     let collector = ItemEffectCollector::new(&provider, &resolver);
+
+    let validator = TestItemValidator::new(&provider);
+    let item = item.validate(&validator).expect("item should be valid");
 
     let entries = collector
         .collect(&item)
@@ -172,8 +185,9 @@ fn collects_effects_from_granted_passive_node() {
 
     let provider = TestModifierDefinitionProvider::new(vec![definition]);
 
-    let resolver = TestModifierEffectResolver;
-
+    let resolver = TestModifierEffectResolver::default();
+    let validator = TestItemValidator::new(&provider);
+    let item = item.validate(&validator).expect("item should be valid");
     let collector = ItemEffectCollector::new(&provider, &resolver);
 
     let entries = collector

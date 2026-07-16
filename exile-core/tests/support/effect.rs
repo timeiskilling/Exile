@@ -3,8 +3,10 @@ use std::convert::Infallible;
 
 use exile_core::effect::{
     EffectAccumulatorFactory, EffectAccumulatorFinalizer, EffectApplier, EffectConditionEvaluator,
-    EffectEntry, EffectSource, ModifierEffectResolver,
+    EffectEntry, EffectSource, ModifierEffectResolver, PassiveNodeProvider,
 };
+
+use crate::support::TestPassiveNodeId;
 
 use super::game::{
     TestEffect, TestEffectCondition, TestGame, TestModifier, TestModifierDefinition,
@@ -18,15 +20,30 @@ pub enum TestPassiveNode {
     Empty,
 }
 
-#[derive(Debug, PartialEq)]
-pub struct TestModifierEffectResolver;
+#[derive(Debug, PartialEq, Eq)]
+pub struct TestModifierEffectResolver {
+    passive_nodes: TestPassiveNodeProvider,
+}
 
-#[derive(Debug, PartialEq)]
+impl TestModifierEffectResolver {
+    pub fn new(passive_nodes: TestPassiveNodeProvider) -> Self {
+        Self { passive_nodes }
+    }
+}
+
+impl Default for TestModifierEffectResolver {
+    fn default() -> Self {
+        Self::new(TestPassiveNodeProvider::default())
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
 pub enum TestEffectResolveError {
     UnsupportedModifier,
     InvalidModifierPayload,
-}
 
+    PassiveNodeProvider(TestPassiveNodeProviderError),
+}
 impl EffectSource<TestGame> for TestPassiveNode {
     fn collect_effects(&self) -> Vec<EffectEntry<TestGame>> {
         match self {
@@ -78,15 +95,33 @@ impl ModifierEffectResolver<TestGame> for TestModifierEffectResolver {
                 )])
             }
 
-            TestModifierKind::GrantsChaosInoculation => {
+            TestModifierKind::GrantsPassiveNode { node_id } => {
                 if !matches!(modifier, TestModifier::NoRoll) {
                     return Err(TestEffectResolveError::InvalidModifierPayload);
                 }
 
-                Ok(TestPassiveNode::ChaosInoculation.collect_effects())
+                let node = self
+                    .passive_nodes
+                    .node(&node_id)
+                    .map_err(TestEffectResolveError::PassiveNodeProvider)?;
+
+                Ok(node.collect_effects())
             }
 
             TestModifierKind::Unsupported => Err(TestEffectResolveError::UnsupportedModifier),
+
+            TestModifierKind::AddedPhysicalDamage => {
+                let TestModifier::Range { min, max } = modifier else {
+                    return Err(TestEffectResolveError::InvalidModifierPayload);
+                };
+
+                Ok(vec![EffectEntry::unconditional(
+                    TestEffect::AddedPhysicalDamage {
+                        min: *min,
+                        max: *max,
+                    },
+                )])
+            }
         }
     }
 }
@@ -127,6 +162,9 @@ pub struct TestEffectAccumulator {
     pub chaos_immune: bool,
     pub increased_damage_percent: u32,
     pub increased_movement_speed_percent: u32,
+
+    pub added_physical_damage_min: u32,
+    pub added_physical_damage_max: u32,
 }
 
 impl TestEffectAccumulator {
@@ -169,6 +207,12 @@ impl EffectApplier<TestGame> for TestEffectApplier {
             TestEffect::IncreasedMovementSpeed { percent } => {
                 accumulator.increased_movement_speed_percent += u32::from(*percent);
             }
+
+            TestEffect::AddedPhysicalDamage { min, max } => {
+                accumulator.added_physical_damage_min += u32::from(*min);
+
+                accumulator.added_physical_damage_max += u32::from(*max);
+            }
         }
 
         Ok(())
@@ -181,6 +225,9 @@ pub struct TestFinalStats {
     pub chaos_immune: bool,
     pub increased_damage_percent: u32,
     pub increased_movement_speed_percent: u32,
+
+    pub added_physical_damage_min: u32,
+    pub added_physical_damage_max: u32,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -208,8 +255,14 @@ impl EffectAccumulatorFinalizer for TestEffectAccumulatorFinalizer {
         Ok(TestFinalStats {
             maximum_life,
             chaos_immune: accumulator.chaos_immune,
+
             increased_damage_percent: accumulator.increased_damage_percent,
+
             increased_movement_speed_percent: accumulator.increased_movement_speed_percent,
+
+            added_physical_damage_min: accumulator.added_physical_damage_min,
+
+            added_physical_damage_max: accumulator.added_physical_damage_max,
         })
     }
 }
@@ -232,5 +285,51 @@ impl EffectAccumulatorFactory for TestEffectAccumulatorFactory {
 
             ..TestEffectAccumulator::default()
         })
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TestPassiveNodeProviderError {
+    NotFound(TestPassiveNodeId),
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct TestPassiveNodeProvider {
+    nodes: Vec<(TestPassiveNodeId, TestPassiveNode)>,
+}
+
+impl TestPassiveNodeProvider {
+    pub fn new(nodes: Vec<(TestPassiveNodeId, TestPassiveNode)>) -> Self {
+        Self { nodes }
+    }
+}
+
+impl PassiveNodeProvider<TestGame> for TestPassiveNodeProvider {
+    type Id = TestPassiveNodeId;
+    type Node = TestPassiveNode;
+    type Error = TestPassiveNodeProviderError;
+
+    fn node(&self, id: &Self::Id) -> Result<&Self::Node, Self::Error> {
+        self.nodes
+            .iter()
+            .find(|(node_id, _)| node_id == id)
+            .map(|(_, node)| node)
+            .ok_or(TestPassiveNodeProviderError::NotFound(*id))
+    }
+}
+
+impl Default for TestPassiveNodeProvider {
+    fn default() -> Self {
+        Self::new(vec![
+            (
+                TestPassiveNodeId::ChaosInoculation,
+                TestPassiveNode::ChaosInoculation,
+            ),
+            (
+                TestPassiveNodeId::FullLifeDamage,
+                TestPassiveNode::FullLifeDamage,
+            ),
+            (TestPassiveNodeId::Empty, TestPassiveNode::Empty),
+        ])
     }
 }

@@ -1,7 +1,7 @@
 use crate::{
     effect::{EffectEntry, ModifierEffectResolver},
     game::Game,
-    item::{ModifierDefinitionProvider, item_instance::ItemInstance},
+    item::{ItemInstance, ModifierDefinitionProvider, Validated},
 };
 
 type Result<G, P, R> = std::result::Result<
@@ -31,7 +31,7 @@ impl<'a, P, R> ItemEffectCollector<'a, P, R> {
         }
     }
 
-    pub fn collect<G>(&self, item: &ItemInstance<G>) -> Result<G, P, R>
+    pub fn collect<G>(&self, item: &ItemInstance<G, Validated>) -> Result<G, P, R>
     where
         G: Game,
         P: ModifierDefinitionProvider<G>,

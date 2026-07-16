@@ -2,7 +2,7 @@ mod support;
 
 use exile_core::{
     effect::{EffectCollection, ItemEffectCollectionError, ItemEffectCollector},
-    item::item_editor::ItemEditor,
+    item::ItemEditor,
 };
 
 use support::*;
@@ -79,7 +79,10 @@ fn collects_all_item_effects_after_existing_source_effects() {
         movement_speed_definition,
     ]);
 
-    let resolver = TestModifierEffectResolver;
+    let validator = TestItemValidator::new(&provider);
+
+    let item = item.validate(&validator).expect("item should be valid");
+    let resolver = TestModifierEffectResolver::default();
 
     let collector = ItemEffectCollector::new(&provider, &resolver);
 
@@ -110,35 +113,53 @@ fn collects_all_item_effects_after_existing_source_effects() {
 
 #[test]
 fn item_collection_error_does_not_change_effect_collection() {
-    let mut item = create_valid_item();
+    let mut draft = create_valid_item();
     let editor = ItemEditor::new(TestRules);
 
-    let maximum_life_definition = maximum_life_definition();
+    /*
+     * Definitions для додавання modifiers у draft.
+     */
+    let maximum_life_def = maximum_life_definition();
 
     editor
         .add_modifier(
-            &mut item,
-            &maximum_life_definition,
+            &mut draft,
+            &maximum_life_def,
             TestModifier::Rolled { roll: 25 },
         )
         .expect("maximum life modifier should be added");
 
-    let movement_speed_definition = movement_speed_definition();
+    let movement_speed_def = movement_speed_definition();
 
     editor
         .add_modifier(
-            &mut item,
-            &movement_speed_definition,
+            &mut draft,
+            &movement_speed_def,
             TestModifier::Rolled { roll: 20 },
         )
         .expect("movement speed modifier should be added");
 
-    // У provider навмисно немає MovementSpeed.
-    let provider = TestModifierDefinitionProvider::new(vec![maximum_life_definition]);
+    /*
+     * Validator повинен мати всі definitions,
+     * які використовуються предметом.
+     *
+     * Helpers викликаємо повторно, тому що попередні
+     * values уже належать локальним змінним.
+     */
+    let validation_provider = TestModifierDefinitionProvider::new(vec![
+        maximum_life_definition(),
+        movement_speed_definition(),
+    ]);
 
-    let resolver = TestModifierEffectResolver;
+    let validator = TestItemValidator::new(&validation_provider);
 
-    let collector = ItemEffectCollector::new(&provider, &resolver);
+    let item = draft.validate(&validator).expect("item should be valid");
+
+    let collection_provider = TestModifierDefinitionProvider::new(vec![maximum_life_definition()]);
+
+    let resolver = TestModifierEffectResolver::default();
+
+    let collector = ItemEffectCollector::new(&collection_provider, &resolver);
 
     let mut collection = EffectCollection::<TestGame>::new();
 

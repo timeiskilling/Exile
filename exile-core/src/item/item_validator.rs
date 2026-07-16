@@ -1,4 +1,7 @@
-use crate::{game::Game, item::item_instance::ItemInstance};
+use crate::{
+    game::Game,
+    item::item_instance::{ItemInstance, Unvalidated},
+};
 
 pub trait ItemValidator<G>
 where
@@ -6,5 +9,5 @@ where
 {
     type Error;
 
-    fn validate_item(&self, item: &ItemInstance<G>) -> Result<(), Self::Error>;
+    fn validate_item(&self, item: &ItemInstance<G, Unvalidated>) -> Result<(), Self::Error>;
 }

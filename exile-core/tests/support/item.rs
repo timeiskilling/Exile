@@ -3,35 +3,53 @@
 use exile_core::{
     game::Game,
     item::{
-        ModifierDefinitionProvider,
-        item_instance::{ItemInstance, ModifierInstanceId},
-        item_rule::ItemRule,
-        item_validator::ItemValidator,
+        ItemInstance, ItemRule, ItemValidator, ModifierDefinitionProvider, ModifierInstanceId,
+        Unvalidated,
     },
 };
 
 use super::game::{
     TestGame, TestItemBase, TestItemState, TestModifier, TestModifierDefinition, TestModifierKind,
+    TestPassiveNodeId,
 };
 
 pub struct TestRules;
-pub struct TestItemValidator;
 
-#[derive(Debug, PartialEq)]
+pub struct TestItemValidator<'a> {
+    definitions: &'a TestModifierDefinitionProvider,
+}
+
+impl<'a> TestItemValidator<'a> {
+    pub fn new(definitions: &'a TestModifierDefinitionProvider) -> Self {
+        Self { definitions }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
 pub enum TestItemRuleError {
     NotBoots,
     ItemLevelTooLow,
     RollOutOfRange,
+    InvalidModifierRange,
     InvalidModifierPayload,
     InvalidItemLevel,
     ModifierCannotBeRemoved,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum TestItemValidationError {
     NotBoots,
     InvalidItemLevel,
-    RollOutOfRange,
+
+    DefinitionProvider(TestModifierDefinitionProviderError),
+
+    ItemLevelTooLow(TestModifierKind),
+
+    RollOutOfRange(TestModifierKind),
+
+    InvalidModifierRange(TestModifierKind),
+
+    InvalidModifierPayload(TestModifierKind),
 }
 
 impl ItemRule<TestGame> for TestRules {
@@ -39,7 +57,7 @@ impl ItemRule<TestGame> for TestRules {
 
     fn validate_add_modifier(
         &self,
-        item: &ItemInstance<TestGame>,
+        item: &ItemInstance<TestGame, Unvalidated>,
         definition: &TestModifierDefinition,
         modifier: &TestModifier,
     ) -> Result<(), Self::Error> {
@@ -63,7 +81,21 @@ impl ItemRule<TestGame> for TestRules {
                 }
             }
 
-            (TestModifierKind::GrantsChaosInoculation, TestModifier::NoRoll) => {}
+            (TestModifierKind::GrantsPassiveNode { .. }, TestModifier::NoRoll) => {}
+
+            (TestModifierKind::AddedPhysicalDamage, TestModifier::Range { min, max }) => {
+                if min > max {
+                    return Err(TestItemRuleError::InvalidModifierRange);
+                }
+
+                if *min < definition.min_roll
+                    || *min > definition.max_roll
+                    || *max < definition.min_roll
+                    || *max > definition.max_roll
+                {
+                    return Err(TestItemRuleError::RollOutOfRange);
+                }
+            }
 
             _ => {
                 return Err(TestItemRuleError::InvalidModifierPayload);
@@ -75,7 +107,7 @@ impl ItemRule<TestGame> for TestRules {
 
     fn validate_replace_modifier(
         &self,
-        item: &ItemInstance<TestGame>,
+        item: &ItemInstance<TestGame, Unvalidated>,
         _target_id: ModifierInstanceId,
         definition: &TestModifierDefinition,
         modifier: &TestModifier,
@@ -85,7 +117,7 @@ impl ItemRule<TestGame> for TestRules {
 
     fn validate_replace_state(
         &self,
-        _item: &ItemInstance<TestGame>,
+        _item: &ItemInstance<TestGame, Unvalidated>,
         new_state: &<TestGame as Game>::ItemState,
     ) -> Result<(), Self::Error> {
         if new_state.item_level == 0 {
@@ -96,7 +128,7 @@ impl ItemRule<TestGame> for TestRules {
 
     fn validate_remove_modifier(
         &self,
-        _item: &ItemInstance<TestGame>,
+        _item: &ItemInstance<TestGame, Unvalidated>,
         _id: ModifierInstanceId,
         modifier: &TestModifier,
     ) -> Result<(), Self::Error> {
@@ -108,10 +140,10 @@ impl ItemRule<TestGame> for TestRules {
     }
 }
 
-impl ItemValidator<TestGame> for TestItemValidator {
+impl ItemValidator<TestGame> for TestItemValidator<'_> {
     type Error = TestItemValidationError;
 
-    fn validate_item(&self, item: &ItemInstance<TestGame>) -> Result<(), Self::Error> {
+    fn validate_item(&self, item: &ItemInstance<TestGame, Unvalidated>) -> Result<(), Self::Error> {
         if !item.base().is_boots {
             return Err(TestItemValidationError::NotBoots);
         }
@@ -121,12 +153,50 @@ impl ItemValidator<TestGame> for TestItemValidator {
         }
 
         for stored in item.modifiers() {
-            let modifier = stored.modifier();
+            let definition = self
+                .definitions
+                .definition(stored.definition_id())
+                .map_err(TestItemValidationError::DefinitionProvider)?;
 
-            if let TestModifier::Rolled { roll } = modifier
-                && (*roll < 20 || *roll > 30)
-            {
-                return Err(TestItemValidationError::RollOutOfRange);
+            if item.state().item_level < definition.required_item_level {
+                return Err(TestItemValidationError::ItemLevelTooLow(definition.kind));
+            }
+
+            match (definition.kind, stored.modifier()) {
+                (
+                    TestModifierKind::MovementSpeed
+                    | TestModifierKind::MaximumLife
+                    | TestModifierKind::Unsupported,
+                    TestModifier::Rolled { roll },
+                ) => {
+                    if *roll < definition.min_roll || *roll > definition.max_roll {
+                        return Err(TestItemValidationError::RollOutOfRange(definition.kind));
+                    }
+                }
+
+                (TestModifierKind::AddedPhysicalDamage, TestModifier::Range { min, max }) => {
+                    if *min > *max {
+                        return Err(TestItemValidationError::InvalidModifierRange(
+                            definition.kind,
+                        ));
+                    }
+
+                    if *min < definition.min_roll
+                        || *min > definition.max_roll
+                        || *max < definition.min_roll
+                        || *max > definition.max_roll
+                    {
+                        return Err(TestItemValidationError::RollOutOfRange(definition.kind));
+                    }
+                }
+
+                (TestModifierKind::GrantsPassiveNode { .. }, TestModifier::NoRoll) => {}
+
+                _ => {
+                    return Err(TestItemValidationError::InvalidModifierPayload(
+                        definition.kind,
+                    ));
+                }
             }
         }
 
@@ -194,11 +264,28 @@ pub fn maximum_life_definition() -> TestModifierDefinition {
     }
 }
 
-pub fn grants_chaos_inoculation_definition() -> TestModifierDefinition {
+pub fn added_physical_damage_definition() -> TestModifierDefinition {
     TestModifierDefinition {
-        kind: TestModifierKind::GrantsChaosInoculation,
+        kind: TestModifierKind::AddedPhysicalDamage,
+        required_item_level: 1,
+        min_roll: 1,
+        max_roll: 100,
+    }
+}
+
+pub fn grants_chaos_inoculation_definition() -> TestModifierDefinition {
+    grants_passive_node_definition(TestPassiveNodeId::ChaosInoculation)
+}
+
+pub fn grants_passive_node_definition(node_id: TestPassiveNodeId) -> TestModifierDefinition {
+    TestModifierDefinition {
+        kind: TestModifierKind::GrantsPassiveNode { node_id },
         required_item_level: 1,
         min_roll: 0,
         max_roll: 0,
     }
+}
+
+pub fn grants_full_life_damage_definition() -> TestModifierDefinition {
+    grants_passive_node_definition(TestPassiveNodeId::FullLifeDamage)
 }

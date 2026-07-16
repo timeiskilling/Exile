@@ -4,7 +4,7 @@ use crate::{
         ModifierEffectResolver,
     },
     game::Game,
-    item::{ModifierDefinitionProvider, item_instance::ItemInstance},
+    item::{ItemInstance, ModifierDefinitionProvider, Validated},
 };
 
 type ItemEffectCollectionResult<P, R, G> = Result<
@@ -74,7 +74,7 @@ where
     pub fn collect_from_item<P, R>(
         &mut self,
         collector: &ItemEffectCollector<'_, P, R>,
-        item: &ItemInstance<G>,
+        item: &ItemInstance<G, Validated>,
     ) -> ItemEffectCollectionResult<P, R, G>
     where
         P: ModifierDefinitionProvider<G>,
