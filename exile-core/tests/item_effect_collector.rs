@@ -1,7 +1,7 @@
 mod support;
 
 use exile_core::{
-    effect::{ItemEffectCollectionError, ItemEffectCollector},
+    effect::{EffectOrigin, ItemEffectCollectionError, ItemEffectCollector},
     item::ItemEditor,
 };
 
@@ -12,7 +12,10 @@ use support::{
     maximum_life_definition, movement_speed_definition,
 };
 
-use crate::support::{TestItemValidator, grants_chaos_inoculation_definition};
+use crate::support::{
+    TestGame, TestItemValidator, added_physical_damage_definition,
+    grants_chaos_inoculation_definition,
+};
 
 #[test]
 fn collects_effects_from_all_item_modifiers_in_order() {
@@ -202,4 +205,47 @@ fn collects_effects_from_granted_passive_node() {
         entries[1].effect(),
         &TestEffect::SetMaximumLife { value: 1 },
     );
+}
+
+#[test]
+fn collected_item_effect_preserves_modifier_origin() {
+    let mut draft = create_valid_item();
+    let editor = ItemEditor::new(TestRules);
+
+    let definition = added_physical_damage_definition();
+
+    editor
+        .add_modifier(
+            &mut draft,
+            &definition,
+            TestModifier::Range { min: 10, max: 20 },
+        )
+        .expect("modifier should be added");
+
+    let _modifier_id = draft.modifiers()[0].id();
+
+    let provider = TestModifierDefinitionProvider::new(vec![definition]);
+
+    let validator = TestItemValidator::new(&provider);
+
+    let item = draft.validate(&validator).expect("item should be valid");
+
+    let resolver = TestModifierEffectResolver::default();
+
+    let collector = ItemEffectCollector::new(&provider, &resolver);
+
+    let entries = collector
+        .collect(&item)
+        .expect("effects should be collected");
+
+    assert_eq!(entries.len(), 1);
+
+    assert!(matches!(
+        entries[0].origin(),
+        &EffectOrigin::<TestGame>::ItemModifier {
+            modifier_instance_id: _modifier_id,
+
+            definition_id: TestModifierKind::AddedPhysicalDamage,
+        },
+    ));
 }

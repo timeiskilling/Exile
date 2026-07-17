@@ -15,4 +15,5 @@ pub trait Game {
 
     type Effect;
     type EffectCondition;
+    type EffectSourceId;
 }

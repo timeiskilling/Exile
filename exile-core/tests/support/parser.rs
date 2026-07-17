@@ -5,27 +5,17 @@ use super::{
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum TestModifierTextPattern {
-    Exact {
-        text: &'static str,
-    },
-
-    Rolled {
-        prefix: &'static str,
-        suffix: &'static str,
-    },
-
-    Range {
-        prefix: &'static str,
-        separator: &'static str,
-        suffix: &'static str,
-    },
+pub enum TestModifierTextDecoder {
+    NoRoll,
+    Rolled,
+    Range,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TestModifierTextDefinition {
     pub definition_id: TestModifierKind,
-    pub pattern: TestModifierTextPattern,
+    pub pattern: &'static str,
+    pub decoder: TestModifierTextDecoder,
 }
 
 #[derive(Debug)]
@@ -48,46 +38,32 @@ impl Default for TestModifierTextDefinitionProvider {
         Self::new(vec![
             TestModifierTextDefinition {
                 definition_id: TestModifierKind::MaximumLife,
-
-                pattern: TestModifierTextPattern::Rolled {
-                    prefix: "+",
-                    suffix: " to Maximum Life",
-                },
+                pattern: "+{} to Maximum Life",
+                decoder: TestModifierTextDecoder::Rolled,
             },
             TestModifierTextDefinition {
                 definition_id: TestModifierKind::MovementSpeed,
-
-                pattern: TestModifierTextPattern::Rolled {
-                    prefix: "",
-                    suffix: "% increased Movement Speed",
-                },
+                pattern: "{}% increased Movement Speed",
+                decoder: TestModifierTextDecoder::Rolled,
+            },
+            TestModifierTextDefinition {
+                definition_id: TestModifierKind::AddedPhysicalDamage,
+                pattern: "Adds {} to {} Physical Damage",
+                decoder: TestModifierTextDecoder::Range,
             },
             TestModifierTextDefinition {
                 definition_id: TestModifierKind::GrantsPassiveNode {
                     node_id: TestPassiveNodeId::ChaosInoculation,
                 },
-
-                pattern: TestModifierTextPattern::Exact {
-                    text: "Grants Chaos Inoculation",
-                },
+                pattern: "Grants Chaos Inoculation",
+                decoder: TestModifierTextDecoder::NoRoll,
             },
             TestModifierTextDefinition {
                 definition_id: TestModifierKind::GrantsPassiveNode {
                     node_id: TestPassiveNodeId::FullLifeDamage,
                 },
-
-                pattern: TestModifierTextPattern::Exact {
-                    text: "Grants Full Life Damage",
-                },
-            },
-            TestModifierTextDefinition {
-                definition_id: TestModifierKind::AddedPhysicalDamage,
-
-                pattern: TestModifierTextPattern::Range {
-                    prefix: "Adds ",
-                    separator: " to ",
-                    suffix: " Physical Damage",
-                },
+                pattern: "Grants Full Life Damage",
+                decoder: TestModifierTextDecoder::NoRoll,
             },
         ])
     }
@@ -96,6 +72,17 @@ impl Default for TestModifierTextDefinitionProvider {
 #[derive(Debug, PartialEq, Eq)]
 pub enum TestModifierTextParserError {
     InvalidNumber(String),
+
+    InvalidDefinitionCaptureCount {
+        definition_id: TestModifierKind,
+        expected: usize,
+        actual: usize,
+    },
+
+    AmbiguousMatch {
+        line: String,
+        definition_ids: Vec<TestModifierKind>,
+    },
 }
 
 #[derive(Debug)]
@@ -124,69 +111,127 @@ impl ModifierTextParser<TestGame> for TestModifierTextParser {
         &self,
         line: &str,
     ) -> Result<Option<(TestModifierKind, TestModifier)>, Self::Error> {
-        for definition in self.definition_provider.definitions() {
-            match definition.pattern {
-                TestModifierTextPattern::Exact { text } => {
-                    if line == text {
-                        return Ok(Some((definition.definition_id, TestModifier::NoRoll)));
-                    }
-                }
+        let mut matches = self
+            .definition_provider
+            .definitions()
+            .iter()
+            .filter_map(|definition| {
+                capture_values(definition.pattern, line).map(|captures| (definition, captures))
+            })
+            .collect::<Vec<_>>();
 
-                TestModifierTextPattern::Rolled { prefix, suffix } => {
-                    let Some(value) = capture_value(line, prefix, suffix) else {
-                        continue;
-                    };
-
-                    let roll = parse_modifier_number(value, line)?;
-
-                    return Ok(Some((
-                        definition.definition_id,
-                        TestModifier::Rolled { roll },
-                    )));
-                }
-                TestModifierTextPattern::Range {
-                    prefix,
-                    separator,
-                    suffix,
-                } => {
-                    let Some((min_text, max_text)) =
-                        capture_range_values(line, prefix, separator, suffix)
-                    else {
-                        continue;
-                    };
-
-                    let min = parse_modifier_number(min_text, line)?;
-                    let max = parse_modifier_number(max_text, line)?;
-
-                    return Ok(Some((
-                        definition.definition_id,
-                        TestModifier::Range { min, max },
-                    )));
-                }
-            }
+        if matches.is_empty() {
+            return Ok(None);
         }
 
-        Ok(None)
+        if matches.len() > 1 {
+            return Err(TestModifierTextParserError::AmbiguousMatch {
+                line: line.to_owned(),
+                definition_ids: matches
+                    .iter()
+                    .map(|(definition, _)| definition.definition_id)
+                    .collect(),
+            });
+        }
+
+        let Some((definition, captures)) = matches.pop() else {
+            return Ok(None);
+        };
+
+        let modifier = decode_modifier(definition, &captures, line)?;
+
+        Ok(Some((definition.definition_id, modifier)))
     }
 }
 
-fn capture_value<'a>(line: &'a str, prefix: &str, suffix: &str) -> Option<&'a str> {
-    let without_prefix = line.strip_prefix(prefix)?;
+fn capture_values<'a>(pattern: &str, line: &'a str) -> Option<Vec<&'a str>> {
+    let parts = pattern.split("{}").collect::<Vec<_>>();
+    let capture_count = parts.len().saturating_sub(1);
 
-    without_prefix.strip_suffix(suffix)
+    if capture_count == 0 {
+        return (pattern == line).then(Vec::new);
+    }
+
+    let mut remaining = line.strip_prefix(parts[0])?;
+    let mut captures = Vec::with_capacity(capture_count);
+
+    for index in 0..capture_count {
+        let next_literal = parts[index + 1];
+        let is_last_capture = index + 1 == capture_count;
+
+        if is_last_capture {
+            if next_literal.is_empty() {
+                captures.push(remaining);
+            } else {
+                captures.push(remaining.strip_suffix(next_literal)?);
+            }
+
+            remaining = "";
+            continue;
+        }
+
+        if next_literal.is_empty() {
+            return None;
+        }
+
+        let literal_index = remaining.find(next_literal)?;
+        let captured = &remaining[..literal_index];
+
+        captures.push(captured);
+
+        remaining = &remaining[literal_index + next_literal.len()..];
+    }
+
+    remaining.is_empty().then_some(captures)
 }
 
-fn capture_range_values<'a>(
-    line: &'a str,
-    prefix: &str,
-    separator: &str,
-    suffix: &str,
-) -> Option<(&'a str, &'a str)> {
-    let without_prefix = line.strip_prefix(prefix)?;
+fn decode_modifier(
+    definition: &TestModifierTextDefinition,
+    captures: &[&str],
+    original_line: &str,
+) -> Result<TestModifier, TestModifierTextParserError> {
+    match definition.decoder {
+        TestModifierTextDecoder::NoRoll => {
+            validate_capture_count(definition, captures, 0)?;
 
-    let without_suffix = without_prefix.strip_suffix(suffix)?;
+            Ok(TestModifier::NoRoll)
+        }
 
-    without_suffix.split_once(separator)
+        TestModifierTextDecoder::Rolled => {
+            validate_capture_count(definition, captures, 1)?;
+
+            let roll = parse_modifier_number(captures[0], original_line)?;
+
+            Ok(TestModifier::Rolled { roll })
+        }
+
+        TestModifierTextDecoder::Range => {
+            validate_capture_count(definition, captures, 2)?;
+
+            let min = parse_modifier_number(captures[0], original_line)?;
+            let max = parse_modifier_number(captures[1], original_line)?;
+
+            Ok(TestModifier::Range { min, max })
+        }
+    }
+}
+
+fn validate_capture_count(
+    definition: &TestModifierTextDefinition,
+    captures: &[&str],
+    expected: usize,
+) -> Result<(), TestModifierTextParserError> {
+    let actual = captures.len();
+
+    if actual != expected {
+        return Err(TestModifierTextParserError::InvalidDefinitionCaptureCount {
+            definition_id: definition.definition_id,
+            expected,
+            actual,
+        });
+    }
+
+    Ok(())
 }
 
 fn parse_modifier_number(

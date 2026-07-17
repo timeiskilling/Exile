@@ -1,7 +1,10 @@
 mod support;
 
 use exile_core::{
-    effect::{EffectCalculator, EffectCollection, EffectCollectionEvaluator, ItemEffectCollector},
+    effect::{
+        EffectCalculator, EffectCollection, EffectCollectionEvaluator, EffectOrigin,
+        ItemEffectCollector,
+    },
     item::ItemTextParser,
 };
 
@@ -80,8 +83,11 @@ fn parses_validates_and_calculates_item_from_text() {
 
     assert_eq!(active_effects.len(), 4);
 
-    let calculator = EffectCalculator::new(TestEffectApplier, TestEffectAccumulatorFinalizer);
-
+    let calculator = EffectCalculator::new(
+        TestEffectApplier,
+        TestEffectAccumulatorFinalizer,
+        TestEffectPhaseResolver,
+    );
     let input = TestCalculationInput {
         base_maximum_life: 100,
     };
@@ -146,7 +152,11 @@ fn conditional_effect_from_text_depends_on_context() {
 
     let collection_evaluator = EffectCollectionEvaluator::new(TestEffectConditionEvaluator);
 
-    let calculator = EffectCalculator::new(TestEffectApplier, TestEffectAccumulatorFinalizer);
+    let calculator = EffectCalculator::new(
+        TestEffectApplier,
+        TestEffectAccumulatorFinalizer,
+        TestEffectPhaseResolver,
+    );
 
     let input = TestCalculationInput {
         base_maximum_life: 100,
@@ -162,6 +172,21 @@ fn conditional_effect_from_text_depends_on_context() {
         .expect("conditions should be evaluated");
 
     assert_eq!(active_at_full_life.len(), 1);
+
+    let active_entry = active_at_full_life
+        .iter()
+        .next()
+        .expect("active entry should exist");
+
+    assert!(matches!(
+        active_entry.origin(),
+        EffectOrigin::ItemModifier {
+            definition_id: TestModifierKind::GrantsPassiveNode {
+                node_id: TestPassiveNodeId::FullLifeDamage,
+            },
+            ..
+        }
+    ));
 
     let stats_at_full_life = calculator
         .calculate_from_input(&active_at_full_life, &TestEffectAccumulatorFactory, &input)
@@ -271,8 +296,12 @@ fn calculates_added_physical_damage_from_item_text() {
 
     assert_eq!(active_effects.len(), 1);
 
-    let calculator = EffectCalculator::new(TestEffectApplier, TestEffectAccumulatorFinalizer);
-
+    let calculator = EffectCalculator::new(
+        TestEffectApplier,
+        TestEffectAccumulatorFinalizer,
+        TestEffectPhaseResolver,
+    );
+    
     let input = TestCalculationInput {
         base_maximum_life: 100,
     };

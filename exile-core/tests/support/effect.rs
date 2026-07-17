@@ -4,9 +4,10 @@ use std::convert::Infallible;
 use exile_core::effect::{
     EffectAccumulatorFactory, EffectAccumulatorFinalizer, EffectApplier, EffectConditionEvaluator,
     EffectEntry, EffectSource, ModifierEffectResolver, PassiveNodeProvider,
+    calculation::{EffectConflictKeyResolver, EffectPhaseResolver},
 };
 
-use crate::support::TestPassiveNodeId;
+use crate::support::{TestEffectSourceId, TestPassiveNodeId};
 
 use super::game::{
     TestEffect, TestEffectCondition, TestGame, TestModifier, TestModifierDefinition,
@@ -45,6 +46,18 @@ pub enum TestEffectResolveError {
     PassiveNodeProvider(TestPassiveNodeProviderError),
 }
 impl EffectSource<TestGame> for TestPassiveNode {
+    fn effect_source_id(&self) -> TestEffectSourceId {
+        let node_id = match self {
+            TestPassiveNode::ChaosInoculation => TestPassiveNodeId::ChaosInoculation,
+
+            TestPassiveNode::FullLifeDamage => TestPassiveNodeId::FullLifeDamage,
+
+            TestPassiveNode::Empty => TestPassiveNodeId::Empty,
+        };
+
+        TestEffectSourceId::PassiveNode(node_id)
+    }
+
     fn collect_effects(&self) -> Vec<EffectEntry<TestGame>> {
         match self {
             TestPassiveNode::ChaosInoculation => {
@@ -176,11 +189,20 @@ impl TestEffectAccumulator {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TestEffectApplyError {
+    AddedMaximumLife,
+    IncreasedDamage,
+    IncreasedMovementSpeed,
+    AddedPhysicalDamageMinimum,
+    AddedPhysicalDamageMaximum,
+}
+
 pub struct TestEffectApplier;
 
 impl EffectApplier<TestGame> for TestEffectApplier {
     type Accumulator = TestEffectAccumulator;
-    type Error = Infallible;
+    type Error = TestEffectApplyError;
 
     fn apply_effect(
         &self,
@@ -197,21 +219,46 @@ impl EffectApplier<TestGame> for TestEffectApplier {
             }
 
             TestEffect::AddedMaximumLife { amount } => {
-                accumulator.added_maximum_life += u32::from(*amount);
+                let next = accumulator
+                    .added_maximum_life
+                    .checked_add(u32::from(*amount))
+                    .ok_or(TestEffectApplyError::AddedMaximumLife)?;
+
+                accumulator.added_maximum_life = next;
             }
 
             TestEffect::IncreasedDamage { percent } => {
-                accumulator.increased_damage_percent += u32::from(*percent);
+                let next = accumulator
+                    .increased_damage_percent
+                    .checked_add(u32::from(*percent))
+                    .ok_or(TestEffectApplyError::IncreasedDamage)?;
+
+                accumulator.increased_damage_percent = next;
             }
 
             TestEffect::IncreasedMovementSpeed { percent } => {
-                accumulator.increased_movement_speed_percent += u32::from(*percent);
+                let next = accumulator
+                    .increased_movement_speed_percent
+                    .checked_add(u32::from(*percent))
+                    .ok_or(TestEffectApplyError::IncreasedMovementSpeed)?;
+
+                accumulator.increased_movement_speed_percent = next;
             }
 
             TestEffect::AddedPhysicalDamage { min, max } => {
-                accumulator.added_physical_damage_min += u32::from(*min);
+                let next_min = accumulator
+                    .added_physical_damage_min
+                    .checked_add(u32::from(*min))
+                    .ok_or(TestEffectApplyError::AddedPhysicalDamageMinimum)?;
 
-                accumulator.added_physical_damage_max += u32::from(*max);
+                let next_max = accumulator
+                    .added_physical_damage_max
+                    .checked_add(u32::from(*max))
+                    .ok_or(TestEffectApplyError::AddedPhysicalDamageMaximum)?;
+
+                accumulator.added_physical_damage_min = next_min;
+
+                accumulator.added_physical_damage_max = next_max;
             }
         }
 
@@ -331,5 +378,51 @@ impl Default for TestPassiveNodeProvider {
             ),
             (TestPassiveNodeId::Empty, TestPassiveNode::Empty),
         ])
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum TestEffectPhase {
+    Added,
+    Increased,
+    Final,
+}
+
+pub struct TestEffectPhaseResolver;
+
+impl EffectPhaseResolver<TestGame> for TestEffectPhaseResolver {
+    type Phase = TestEffectPhase;
+
+    fn phase(&self, effect: &TestEffect) -> Self::Phase {
+        match effect {
+            TestEffect::AddedMaximumLife { .. } | TestEffect::AddedPhysicalDamage { .. } => {
+                TestEffectPhase::Added
+            }
+
+            TestEffect::IncreasedDamage { .. } | TestEffect::IncreasedMovementSpeed { .. } => {
+                TestEffectPhase::Increased
+            }
+
+            TestEffect::ChaosImmune | TestEffect::SetMaximumLife { .. } => TestEffectPhase::Final,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum TestEffectConflictKey {
+    MaximumLifeOverride,
+}
+
+pub struct TestEffectConflictKeyResolver;
+
+impl EffectConflictKeyResolver<TestGame> for TestEffectConflictKeyResolver {
+    type Key = TestEffectConflictKey;
+
+    fn conflict_key(&self, effect: &TestEffect) -> Option<Self::Key> {
+        match effect {
+            TestEffect::SetMaximumLife { .. } => Some(TestEffectConflictKey::MaximumLifeOverride),
+
+            _ => None,
+        }
     }
 }

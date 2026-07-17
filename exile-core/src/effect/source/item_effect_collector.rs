@@ -1,11 +1,11 @@
 use crate::{
-    effect::{EffectEntry, ModifierEffectResolver},
+    effect::{EffectOrigin, ModifierEffectResolver, SourcedEffectEntry},
     game::Game,
     item::{ItemInstance, ModifierDefinitionProvider, Validated},
 };
 
 type Result<G, P, R> = std::result::Result<
-    Vec<EffectEntry<G>>,
+    Vec<SourcedEffectEntry<G>>,
     ItemEffectCollectionError<
         <P as ModifierDefinitionProvider<G>>::Error,
         <R as ModifierEffectResolver<G>>::Error,
@@ -34,6 +34,7 @@ impl<'a, P, R> ItemEffectCollector<'a, P, R> {
     pub fn collect<G>(&self, item: &ItemInstance<G, Validated>) -> Result<G, P, R>
     where
         G: Game,
+        G::ModifierDefinitionId: Clone,
         P: ModifierDefinitionProvider<G>,
         R: ModifierEffectResolver<G>,
     {
@@ -50,7 +51,16 @@ impl<'a, P, R> ItemEffectCollector<'a, P, R> {
                 .resolve_modifier_effects(definition, stored_modifier.modifier())
                 .map_err(ItemEffectCollectionError::Resolver)?;
 
-            effects.extend(modifier_effects);
+            for entry in modifier_effects {
+                effects.push(SourcedEffectEntry::new(
+                    entry,
+                    EffectOrigin::ItemModifier {
+                        modifier_instance_id: stored_modifier.id(),
+
+                        definition_id: stored_modifier.definition_id().clone(),
+                    },
+                ));
+            }
         }
 
         Ok(effects)

@@ -73,6 +73,12 @@ impl ModifierDefinitionIdentity for TestModifierDefinition {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TestEffectSourceId {
+    PassiveNode(TestPassiveNodeId),
+    Synthetic(&'static str),
+}
+
 impl Game for TestGame {
     type ItemBase = TestItemBase;
     type ItemState = TestItemState;
@@ -83,4 +89,5 @@ impl Game for TestGame {
 
     type Effect = TestEffect;
     type EffectCondition = TestEffectCondition;
+    type EffectSourceId = TestEffectSourceId;
 }

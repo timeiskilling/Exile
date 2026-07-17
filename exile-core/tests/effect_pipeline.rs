@@ -15,8 +15,9 @@ use support::{
 };
 
 use crate::support::{
-    TestEffect, TestItemValidator, TestModifierDefinitionProvider, TestRules, create_definition,
-    create_valid_item, grants_chaos_inoculation_definition, maximum_life_definition,
+    TestEffect, TestEffectPhaseResolver, TestItemValidator, TestModifierDefinitionProvider,
+    TestRules, create_definition, create_valid_item, grants_chaos_inoculation_definition,
+    maximum_life_definition,
 };
 
 fn build_effect_collection() -> EffectCollection<TestGame> {
@@ -70,8 +71,11 @@ fn calculates_final_stats_from_passive_node_and_modifiers() {
 
     assert_eq!(active.len(), 3);
 
-    let calculator = EffectCalculator::new(TestEffectApplier, TestEffectAccumulatorFinalizer);
-
+    let calculator = EffectCalculator::new(
+        TestEffectApplier,
+        TestEffectAccumulatorFinalizer,
+        TestEffectPhaseResolver,
+    );
     let input = TestCalculationInput {
         base_maximum_life: 100,
     };
@@ -157,8 +161,11 @@ fn calculates_final_stats_from_item_modifiers_and_granted_node() {
         .expect("effect evaluation should succeed");
 
     assert_eq!(active.len(), 3);
-    let calculator = EffectCalculator::new(TestEffectApplier, TestEffectAccumulatorFinalizer);
-
+    let calculator = EffectCalculator::new(
+        TestEffectApplier,
+        TestEffectAccumulatorFinalizer,
+        TestEffectPhaseResolver,
+    );
     let input = TestCalculationInput {
         base_maximum_life: 100,
     };

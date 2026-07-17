@@ -2,7 +2,7 @@ mod support;
 
 use exile_core::effect::{
     EffectApplier, EffectCollection, EffectCollectionApplier, EffectCollectionEvaluator,
-    EffectEntry, EffectSource,
+    EffectEntry, EffectSource, calculation::EffectExecutionPlan,
 };
 
 use support::{
@@ -13,6 +13,8 @@ use support::{
     game::{TestEffect, TestGame},
 };
 
+use crate::support::{TestEffectPhaseResolver, TestEffectSourceId};
+
 struct OrderedEffectSource;
 
 impl EffectSource<TestGame> for OrderedEffectSource {
@@ -22,6 +24,10 @@ impl EffectSource<TestGame> for OrderedEffectSource {
             EffectEntry::unconditional(TestEffect::SetMaximumLife { value: 1 }),
             EffectEntry::unconditional(TestEffect::IncreasedDamage { percent: 20 }),
         ]
+    }
+
+    fn effect_source_id(&self) -> TestEffectSourceId {
+        TestEffectSourceId::Synthetic("ordered_effect_source")
     }
 }
 
@@ -49,8 +55,10 @@ fn applies_all_active_effects_in_collection_order() {
 
     let collection_applier = EffectCollectionApplier::new(TestEffectApplier);
 
+    let plan = EffectExecutionPlan::build(&active, &TestEffectPhaseResolver);
+
     collection_applier
-        .apply_all(&active, &mut accumulator)
+        .apply_all(&plan, &mut accumulator)
         .expect("all effects should be applied");
 
     assert_eq!(accumulator.added_maximum_life, 25);
@@ -78,12 +86,13 @@ fn does_not_apply_inactive_effects() {
     assert!(active.is_empty());
 
     let mut accumulator = TestEffectAccumulator::default();
-
     let collection_applier = EffectCollectionApplier::new(TestEffectApplier);
 
+    let plan = EffectExecutionPlan::build(&active, &TestEffectPhaseResolver);
+
     collection_applier
-        .apply_all(&active, &mut accumulator)
-        .expect("empty active collection should succeed");
+        .apply_all(&plan, &mut accumulator)
+        .expect("all effects should be applied");
 
     assert_eq!(accumulator.increased_damage_percent, 0);
 }
@@ -148,7 +157,9 @@ fn stops_on_first_error_and_keeps_previous_changes() {
 
     let collection_applier = EffectCollectionApplier::new(FailingEffectApplier);
 
-    let result = collection_applier.apply_all(&active, &mut accumulator);
+    let plan = EffectExecutionPlan::build(&active, &TestEffectPhaseResolver);
+
+    let result = collection_applier.apply_all(&plan, &mut accumulator);
 
     assert!(matches!(
         result,

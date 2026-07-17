@@ -7,6 +7,8 @@ use support::{
     game::TestEffect,
 };
 
+use crate::support::TestEffectApplyError;
+
 #[test]
 fn applies_boolean_effect() {
     let mut accumulator = TestEffectAccumulator::default();
@@ -49,4 +51,44 @@ fn applies_added_maximum_life_effect() {
     assert_eq!(accumulator.base_maximum_life, 100);
     assert_eq!(accumulator.added_maximum_life, 25);
     assert_eq!(accumulator.maximum_life_override, None);
+}
+
+#[test]
+fn physical_damage_maximum_overflow_does_not_partially_update_range() {
+    let mut accumulator = TestEffectAccumulator {
+        added_physical_damage_min: 10,
+        added_physical_damage_max: u32::MAX,
+        ..TestEffectAccumulator::default()
+    };
+
+    let result = TestEffectApplier.apply_effect(
+        &TestEffect::AddedPhysicalDamage { min: 5, max: 1 },
+        &mut accumulator,
+    );
+
+    assert_eq!(
+        result,
+        Err(TestEffectApplyError::AddedPhysicalDamageMaximum),
+    );
+
+    assert_eq!(accumulator.added_physical_damage_min, 10,);
+
+    assert_eq!(accumulator.added_physical_damage_max, u32::MAX,);
+}
+
+#[test]
+fn increased_damage_overflow_does_not_mutate_accumulator() {
+    let mut accumulator = TestEffectAccumulator {
+        increased_damage_percent: u32::MAX,
+        ..TestEffectAccumulator::default()
+    };
+
+    let result = TestEffectApplier.apply_effect(
+        &TestEffect::IncreasedDamage { percent: 1 },
+        &mut accumulator,
+    );
+
+    assert_eq!(result, Err(TestEffectApplyError::IncreasedDamage,),);
+
+    assert_eq!(accumulator.increased_damage_percent, u32::MAX,);
 }

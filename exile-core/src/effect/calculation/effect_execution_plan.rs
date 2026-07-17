@@ -1,21 +1,34 @@
 use crate::{
-    effect::{EffectOrigin, SourcedEffectEntry},
+    effect::{ActiveEffectCollection, SourcedEffectEntry, calculation::EffectPhaseResolver},
     game::Game,
 };
 
-pub struct ActiveEffectCollection<'a, G>
+pub struct EffectExecutionPlan<'a, G>
 where
     G: Game,
 {
     entries: Vec<&'a SourcedEffectEntry<G>>,
 }
 
-impl<'a, G> ActiveEffectCollection<'a, G>
+impl<'a, G> EffectExecutionPlan<'a, G>
 where
     G: Game,
 {
-    pub(crate) fn new(entries: Vec<&'a SourcedEffectEntry<G>>) -> Self {
-        Self { entries }
+    pub fn build<R>(effects: &ActiveEffectCollection<'a, G>, phase_resolver: &R) -> Self
+    where
+        R: EffectPhaseResolver<G>,
+    {
+        let mut entries = effects
+            .iter()
+            .enumerate()
+            .map(|(index, entry)| (phase_resolver.phase(entry.effect()), index, entry))
+            .collect::<Vec<_>>();
+
+        entries.sort_by(|left, right| left.0.cmp(&right.0).then_with(|| left.1.cmp(&right.1)));
+
+        Self {
+            entries: entries.into_iter().map(|(_, _, entry)| entry).collect(),
+        }
     }
 
     pub fn len(&self) -> usize {
@@ -33,13 +46,9 @@ where
     pub fn effects(&self) -> impl Iterator<Item = &'a G::Effect> + '_ {
         self.entries.iter().copied().map(|entry| entry.effect())
     }
-
-    pub fn origins(&self) -> impl Iterator<Item = &'a EffectOrigin<G>> + '_ {
-        self.entries.iter().copied().map(|entry| entry.origin())
-    }
 }
 
-impl<'a, 'b, G> IntoIterator for &'b ActiveEffectCollection<'a, G>
+impl<'a, 'b, G> IntoIterator for &'b EffectExecutionPlan<'a, G>
 where
     G: Game,
 {
@@ -52,7 +61,7 @@ where
     }
 }
 
-impl<'a, G> IntoIterator for ActiveEffectCollection<'a, G>
+impl<'a, G> IntoIterator for EffectExecutionPlan<'a, G>
 where
     G: Game,
 {

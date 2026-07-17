@@ -10,7 +10,9 @@ pub use calculation::{
 
 pub use evaluation::{EffectCollectionEvaluator, EffectConditionEvaluator};
 
-pub use model::{ActiveEffectCollection, EffectCollection, EffectEntry};
+pub use model::{
+    ActiveEffectCollection, EffectCollection, EffectEntry, EffectOrigin, SourcedEffectEntry,
+};
 
 pub use source::{
     EffectSource, ItemEffectCollectionError, ItemEffectCollector, ModifierEffectResolver,

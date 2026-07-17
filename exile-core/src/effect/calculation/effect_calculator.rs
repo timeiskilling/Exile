@@ -2,6 +2,7 @@ use crate::{
     effect::{
         ActiveEffectCollection, EffectAccumulatorFactory, EffectAccumulatorFinalizer,
         EffectApplier, EffectCollectionApplier,
+        calculation::{EffectExecutionPlan, EffectPhaseResolver},
     },
     game::Game,
 };
@@ -36,16 +37,18 @@ pub enum EffectCalculationFromInputError<CreateError, ApplyError, FinalizeError>
     Finalize(FinalizeError),
 }
 
-pub struct EffectCalculator<A, F> {
+pub struct EffectCalculator<A, F, P> {
     collection_applier: EffectCollectionApplier<A>,
     finalizer: F,
+    phase_resolver: P,
 }
 
-impl<A, F> EffectCalculator<A, F> {
-    pub fn new(effect_applier: A, finalizer: F) -> Self {
+impl<A, F, P> EffectCalculator<A, F, P> {
+    pub fn new(effect_applier: A, finalizer: F, phase_resolver: P) -> Self {
         Self {
             collection_applier: EffectCollectionApplier::new(effect_applier),
             finalizer,
+            phase_resolver,
         }
     }
 
@@ -58,9 +61,12 @@ impl<A, F> EffectCalculator<A, F> {
         G: Game,
         A: EffectApplier<G>,
         F: EffectAccumulatorFinalizer<Accumulator = <A as EffectApplier<G>>::Accumulator>,
+        P: EffectPhaseResolver<G>,
     {
+        let plan = EffectExecutionPlan::build(effects, &self.phase_resolver);
+
         self.collection_applier
-            .apply_all(effects, &mut accumulator)
+            .apply_all(&plan, &mut accumulator)
             .map_err(EffectCalculationError::Apply)?;
 
         self.finalizer
@@ -79,6 +85,7 @@ impl<A, F> EffectCalculator<A, F> {
         A: EffectApplier<G>,
         Factory: EffectAccumulatorFactory<Accumulator = <A as EffectApplier<G>>::Accumulator>,
         F: EffectAccumulatorFinalizer<Accumulator = <A as EffectApplier<G>>::Accumulator>,
+        P: EffectPhaseResolver<G>,
     {
         let accumulator = factory
             .create(input)

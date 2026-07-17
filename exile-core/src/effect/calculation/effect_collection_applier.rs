@@ -1,5 +1,5 @@
 use crate::{
-    effect::{ActiveEffectCollection, EffectApplier},
+    effect::{EffectApplier, calculation::EffectExecutionPlan},
     game::Game,
 };
 
@@ -14,14 +14,14 @@ impl<A> EffectCollectionApplier<A> {
 
     pub fn apply_all<G>(
         &self,
-        effects: &ActiveEffectCollection<'_, G>,
+        plan: &EffectExecutionPlan<'_, G>,
         accumulator: &mut <A as EffectApplier<G>>::Accumulator,
     ) -> Result<(), <A as EffectApplier<G>>::Error>
     where
         G: Game,
         A: EffectApplier<G>,
     {
-        for effect in effects.effects() {
+        for effect in plan.effects() {
             self.effect_applier.apply_effect(effect, accumulator)?;
         }
 

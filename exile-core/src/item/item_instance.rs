@@ -1,27 +1,16 @@
-use std::marker::PhantomData;
+use std::{fmt, marker::PhantomData};
 
 use crate::{game::Game, item::item_validator::ItemValidator};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Unvalidated;
 
-/// Предмет успішно пройшов повну domain-validation.
-///
-/// Такий предмет можна передавати в effect/calculation pipeline.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Validated;
 
-/// Стабільний runtime ID конкретного modifier instance.
-///
-/// Це не ID definition.
-/// Два modifiers однієї definition матимуть різні ModifierInstanceId.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ModifierInstanceId(u64);
 
-/// Modifier, який зберігається всередині предмета.
-///
-/// `definition_id` вказує, якою definition описується modifier.
-/// `modifier` зберігає конкретний runtime payload.
 #[derive(Debug)]
 pub struct StoredModifier<D, M> {
     id: ModifierInstanceId,
@@ -47,22 +36,6 @@ impl<D, M> StoredModifier<D, M> {
     }
 }
 
-/// Runtime instance предмета.
-///
-/// `ValidationState` існує лише на рівні типів.
-/// `PhantomData` не додає runtime-даних до структури.
-///
-/// Default state — `Unvalidated`, тому:
-///
-/// ```text
-/// ItemInstance<G>
-/// ```
-///
-/// означає:
-///
-/// ```text
-/// ItemInstance<G, Unvalidated>
-/// ```
 pub struct ItemInstance<G: Game, ValidationState = Unvalidated> {
     base: G::ItemBase,
     state: G::ItemState,
@@ -75,14 +48,52 @@ pub struct ItemInstance<G: Game, ValidationState = Unvalidated> {
     validation_state: PhantomData<ValidationState>,
 }
 
-/// Методи читання, доступні для будь-якого validation state.
-///
-/// Вони працюють і з:
-///
-/// ```text
-/// ItemInstance<G, Unvalidated>
-/// ItemInstance<G, Validated>
-/// ```
+pub struct ItemValidationFailure<G, E>
+where
+    G: Game,
+{
+    item: ItemInstance<G, Unvalidated>,
+    error: E,
+}
+
+impl<G, E> ItemValidationFailure<G, E>
+where
+    G: Game,
+{
+    pub fn item(&self) -> &ItemInstance<G, Unvalidated> {
+        &self.item
+    }
+
+    pub fn error(&self) -> &E {
+        &self.error
+    }
+
+    pub fn into_item(self) -> ItemInstance<G, Unvalidated> {
+        self.item
+    }
+
+    pub fn into_error(self) -> E {
+        self.error
+    }
+
+    pub fn into_parts(self) -> (ItemInstance<G, Unvalidated>, E) {
+        (self.item, self.error)
+    }
+}
+
+impl<G, E> fmt::Debug for ItemValidationFailure<G, E>
+where
+    G: Game,
+    E: fmt::Debug,
+{
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("ItemValidationFailure")
+            .field("error", &self.error)
+            .finish()
+    }
+}
+
 impl<G, ValidationState> ItemInstance<G, ValidationState>
 where
     G: Game,
@@ -114,9 +125,6 @@ where
         self.revision
     }
 
-    /// Змінює лише compile-time validation marker.
-    ///
-    /// Всі runtime-дані переміщуються без clone.
     fn change_validation_state<NextValidationState>(self) -> ItemInstance<G, NextValidationState> {
         ItemInstance {
             base: self.base,
@@ -129,18 +137,10 @@ where
     }
 }
 
-/// Створення, validation і мутації неперевіреного предмета.
-///
-/// Unchecked methods навмисно недоступні для:
-///
-/// ```text
-/// ItemInstance<G, Validated>
-/// ```
 impl<G> ItemInstance<G, Unvalidated>
 where
     G: Game,
 {
-    /// Створює новий порожній неперевірений предмет.
     pub fn new(base: G::ItemBase, state: G::ItemState) -> Self {
         Self {
             base,
@@ -152,18 +152,6 @@ where
         }
     }
 
-    /// Створює неперевірений snapshot із готових частин.
-    ///
-    /// Призначений для:
-    ///
-    /// - text parser;
-    /// - deserialization;
-    /// - import;
-    /// - migration.
-    ///
-    /// Метод не виконує domain-validation.
-    /// Кожному modifier автоматично призначається runtime ID.
-    /// Revision залишається рівною нулю.
     pub fn from_parts(
         base: G::ItemBase,
         state: G::ItemState,
@@ -178,22 +166,20 @@ where
         item
     }
 
-    /// Перевіряє предмет і при успіху переводить його
-    /// у compile-time стан `Validated`.
-    ///
-    /// При помилці `self` буде спожитий.
-    pub fn validate<V>(self, validator: &V) -> Result<ItemInstance<G, Validated>, V::Error>
+    pub fn validate<V>(
+        self,
+        validator: &V,
+    ) -> Result<ItemInstance<G, Validated>, ItemValidationFailure<G, V::Error>>
     where
         V: ItemValidator<G>,
     {
-        validator.validate_item(&self)?;
+        match validator.validate_item(&self) {
+            Ok(()) => Ok(self.change_validation_state()),
 
-        Ok(self.change_validation_state())
+            Err(error) => Err(ItemValidationFailure { item: self, error }),
+        }
     }
 
-    /// Додає modifier без domain-validation.
-    ///
-    /// Повинен викликатися лише кодом crate, наприклад ItemEditor.
     pub(crate) fn push_modifier_unchecked(
         &mut self,
         definition_id: G::ModifierDefinitionId,
@@ -214,8 +200,6 @@ where
 
         id
     }
-
-    /// Видаляє modifier без domain-validation.
     pub(crate) fn remove_modifier_unchecked(
         &mut self,
         id: ModifierInstanceId,
@@ -227,9 +211,6 @@ where
         Some(stored.into_modifier())
     }
 
-    /// Замінює definition ID і modifier payload.
-    ///
-    /// Повертає попередній modifier instance.
     pub(crate) fn replace_modifier_unchecked(
         &mut self,
         id: ModifierInstanceId,
@@ -245,9 +226,6 @@ where
         Some(previous)
     }
 
-    /// Замінює state без domain-validation.
-    ///
-    /// Повертає попередній state.
     pub(crate) fn replace_state_unchecked(&mut self, state: G::ItemState) -> G::ItemState {
         std::mem::replace(&mut self.state, state)
     }

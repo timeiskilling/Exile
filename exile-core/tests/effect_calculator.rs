@@ -16,7 +16,9 @@ use support::{
     game::{TestEffect, TestGame},
 };
 
-use crate::support::{TestCalculationInput, TestEffectAccumulatorFactory};
+use crate::support::{
+    TestCalculationInput, TestEffectAccumulatorFactory, TestEffectPhaseResolver, TestEffectSourceId,
+};
 
 #[test]
 fn calculates_final_stats_from_active_effects() {
@@ -37,8 +39,11 @@ fn calculates_final_stats_from_active_effects() {
         .collect_active(&collection, &context)
         .expect("condition evaluation should succeed");
 
-    let calculator = EffectCalculator::new(TestEffectApplier, TestEffectAccumulatorFinalizer);
-
+    let calculator = EffectCalculator::new(
+        TestEffectApplier,
+        TestEffectAccumulatorFinalizer,
+        TestEffectPhaseResolver,
+    );
     let accumulator = TestEffectAccumulator::with_base_maximum_life(100);
 
     let stats = calculator
@@ -103,7 +108,11 @@ fn returns_apply_error_and_skips_finalization() {
         .collect_active(&collection, &context)
         .expect("condition evaluation should succeed");
 
-    let calculator = EffectCalculator::new(FailingEffectApplier, PanicFinalizer);
+    let calculator = EffectCalculator::new(
+        FailingEffectApplier,
+        PanicFinalizer,
+        TestEffectPhaseResolver,
+    );
 
     let result = calculator.calculate(&active, ());
 
@@ -122,6 +131,10 @@ impl EffectSource<TestGame> for AddedLifeSource {
         vec![EffectEntry::unconditional(TestEffect::AddedMaximumLife {
             amount: 1,
         })]
+    }
+
+    fn effect_source_id(&self) -> TestEffectSourceId {
+        TestEffectSourceId::Synthetic("added_life_source")
     }
 }
 
@@ -142,8 +155,11 @@ fn returns_finalize_error_after_successful_application() {
         .collect_active(&collection, &context)
         .expect("condition evaluation should succeed");
 
-    let calculator = EffectCalculator::new(TestEffectApplier, TestEffectAccumulatorFinalizer);
-
+    let calculator = EffectCalculator::new(
+        TestEffectApplier,
+        TestEffectAccumulatorFinalizer,
+        TestEffectPhaseResolver,
+    );
     let accumulator = TestEffectAccumulator::with_base_maximum_life(u32::MAX);
 
     let result = calculator.calculate(&active, accumulator);
@@ -175,8 +191,11 @@ fn calculates_final_stats_directly_from_input() {
         .collect_active(&collection, &context)
         .expect("condition evaluation should succeed");
 
-    let calculator = EffectCalculator::new(TestEffectApplier, TestEffectAccumulatorFinalizer);
-
+    let calculator = EffectCalculator::new(
+        TestEffectApplier,
+        TestEffectAccumulatorFinalizer,
+        TestEffectPhaseResolver,
+    );
     let input = TestCalculationInput {
         base_maximum_life: 100,
     };
@@ -222,8 +241,11 @@ fn returns_accumulator_creation_error() {
         .collect_active(&collection, &context)
         .expect("condition evaluation should succeed");
 
-    let calculator = EffectCalculator::new(TestEffectApplier, TestEffectAccumulatorFinalizer);
-
+    let calculator = EffectCalculator::new(
+        TestEffectApplier,
+        TestEffectAccumulatorFinalizer,
+        TestEffectPhaseResolver,
+    );
     let input = TestCalculationInput {
         base_maximum_life: 0,
     };
@@ -236,4 +258,97 @@ fn returns_accumulator_creation_error() {
             TestAccumulatorCreateError::MissingBaseMaximumLife
         ))
     ));
+}
+
+struct UnorderedCalculationSource;
+
+impl EffectSource<TestGame> for UnorderedCalculationSource {
+    fn effect_source_id(&self) -> TestEffectSourceId {
+        TestEffectSourceId::Synthetic("unordered_calculation_source")
+    }
+
+    fn collect_effects(&self) -> Vec<EffectEntry<TestGame>> {
+        vec![
+            EffectEntry::unconditional(TestEffect::SetMaximumLife { value: 1 }),
+            EffectEntry::unconditional(TestEffect::IncreasedDamage { percent: 20 }),
+            EffectEntry::unconditional(TestEffect::AddedMaximumLife { amount: 25 }),
+        ]
+    }
+}
+
+#[derive(Default)]
+struct RecordingOrderAccumulator {
+    applied: Vec<&'static str>,
+}
+
+struct RecordingOrderApplier;
+
+impl EffectApplier<TestGame> for RecordingOrderApplier {
+    type Accumulator = RecordingOrderAccumulator;
+
+    type Error = Infallible;
+
+    fn apply_effect(
+        &self,
+        effect: &TestEffect,
+        accumulator: &mut Self::Accumulator,
+    ) -> Result<(), Self::Error> {
+        let name = match effect {
+            TestEffect::AddedMaximumLife { .. } => "added",
+
+            TestEffect::IncreasedDamage { .. } => "increased",
+
+            TestEffect::SetMaximumLife { .. } => "final",
+
+            _ => "other",
+        };
+
+        accumulator.applied.push(name);
+
+        Ok(())
+    }
+}
+
+struct RecordingOrderFinalizer;
+
+impl EffectAccumulatorFinalizer for RecordingOrderFinalizer {
+    type Accumulator = RecordingOrderAccumulator;
+
+    type Output = Vec<&'static str>;
+
+    type Error = Infallible;
+
+    fn finalize(&self, accumulator: Self::Accumulator) -> Result<Self::Output, Self::Error> {
+        Ok(accumulator.applied)
+    }
+}
+
+#[test]
+fn calculator_applies_effects_in_phase_order() {
+    let mut collection = EffectCollection::<TestGame>::new();
+
+    collection.collect_from_source(&UnorderedCalculationSource);
+
+    let evaluator = EffectCollectionEvaluator::new(TestEffectConditionEvaluator);
+
+    let context = TestEffectContext {
+        enemy_current_life: 100,
+        enemy_maximum_life: 100,
+    };
+
+    let active = evaluator
+        .collect_active(&collection, &context)
+        .expect("condition evaluation should succeed");
+
+    let calculator = EffectCalculator::new(
+        RecordingOrderApplier,
+        RecordingOrderFinalizer,
+        TestEffectPhaseResolver,
+    );
+
+    let applied = calculator
+        .calculate(&active, RecordingOrderAccumulator::default())
+        .expect("calculation should succeed");
+
+    assert_eq!(applied, vec!["added", "increased", "final",],);
 }

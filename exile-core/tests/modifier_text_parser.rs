@@ -88,11 +88,8 @@ fn returns_error_when_matched_roll_is_not_a_number() {
 fn parser_uses_external_text_definitions() {
     let provider = TestModifierTextDefinitionProvider::new(vec![TestModifierTextDefinition {
         definition_id: TestModifierKind::MaximumLife,
-
-        pattern: TestModifierTextPattern::Rolled {
-            prefix: "Life +",
-            suffix: "",
-        },
+        pattern: "Life +{}",
+        decoder: TestModifierTextDecoder::Rolled,
     }]);
 
     let parser = TestModifierTextParser::new(provider);

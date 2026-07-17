@@ -225,3 +225,84 @@ fn rejects_single_roll_for_range_modifier() {
         ))
     ));
 }
+
+#[test]
+fn failed_validation_preserves_unvalidated_item() {
+    let draft = ItemInstance::<TestGame>::from_parts(
+        TestItemBase { is_boots: true },
+        TestItemState { item_level: 10 },
+        vec![(
+            TestModifierKind::MovementSpeed,
+            TestModifier::Rolled { roll: 20 },
+        )],
+    );
+
+    let provider = TestModifierDefinitionProvider::new(vec![movement_speed_definition()]);
+
+    let validator = TestItemValidator::new(&provider);
+
+    let failure = match draft.validate(&validator) {
+        Ok(_) => panic!("validation should fail"),
+        Err(failure) => failure,
+    };
+
+    assert_eq!(
+        failure.error(),
+        &TestItemValidationError::ItemLevelTooLow(TestModifierKind::MovementSpeed,),
+    );
+
+    assert_eq!(failure.item().state().item_level, 10);
+    assert_eq!(failure.item().modifiers().len(), 1);
+    assert_eq!(failure.item().revision(), 0);
+
+    let stored = &failure.item().modifiers()[0];
+
+    assert_eq!(stored.definition_id(), &TestModifierKind::MovementSpeed,);
+
+    assert_eq!(stored.modifier(), &TestModifier::Rolled { roll: 20 },);
+}
+
+#[test]
+fn preserved_item_can_be_fixed_and_validated_again() {
+    let draft = ItemInstance::<TestGame>::from_parts(
+        TestItemBase { is_boots: true },
+        TestItemState { item_level: 10 },
+        vec![(
+            TestModifierKind::MovementSpeed,
+            TestModifier::Rolled { roll: 20 },
+        )],
+    );
+
+    let provider = TestModifierDefinitionProvider::new(vec![movement_speed_definition()]);
+
+    let validator = TestItemValidator::new(&provider);
+
+    let failure = match draft.validate(&validator) {
+        Ok(_) => panic!("validation should fail"),
+        Err(failure) => failure,
+    };
+
+    assert_eq!(
+        failure.error(),
+        &TestItemValidationError::ItemLevelTooLow(TestModifierKind::MovementSpeed,),
+    );
+
+    let mut draft = failure.into_item();
+
+    let editor = ItemEditor::new(TestRules);
+
+    editor
+        .replace_state(&mut draft, TestItemState { item_level: 86 })
+        .expect("item level should be replaced");
+
+    assert_eq!(draft.state().item_level, 86);
+    assert_eq!(draft.revision(), 1);
+
+    let item = draft
+        .validate(&validator)
+        .expect("fixed item should be valid");
+
+    assert_eq!(item.state().item_level, 86);
+    assert_eq!(item.modifiers().len(), 1);
+    assert_eq!(item.revision(), 1);
+}
