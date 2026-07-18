@@ -86,7 +86,7 @@ fn parses_validates_and_calculates_item_from_text() {
     let calculator = EffectCalculator::new(
         TestEffectApplier,
         TestEffectAccumulatorFinalizer,
-        TestEffectPhaseResolver,
+        test_effect_execution_planner(),
     );
     let input = TestCalculationInput {
         base_maximum_life: 100,
@@ -155,7 +155,7 @@ fn conditional_effect_from_text_depends_on_context() {
     let calculator = EffectCalculator::new(
         TestEffectApplier,
         TestEffectAccumulatorFinalizer,
-        TestEffectPhaseResolver,
+        test_effect_execution_planner(),
     );
 
     let input = TestCalculationInput {
@@ -299,9 +299,9 @@ fn calculates_added_physical_damage_from_item_text() {
     let calculator = EffectCalculator::new(
         TestEffectApplier,
         TestEffectAccumulatorFinalizer,
-        TestEffectPhaseResolver,
+        test_effect_execution_planner(),
     );
-    
+
     let input = TestCalculationInput {
         base_maximum_life: 100,
     };

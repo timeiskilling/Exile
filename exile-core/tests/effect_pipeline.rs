@@ -15,9 +15,9 @@ use support::{
 };
 
 use crate::support::{
-    TestEffect, TestEffectPhaseResolver, TestItemValidator, TestModifierDefinitionProvider,
-    TestRules, create_definition, create_valid_item, grants_chaos_inoculation_definition,
-    maximum_life_definition,
+    TestEffect, TestItemValidator, TestModifierDefinitionProvider, TestRules, create_definition,
+    create_valid_item, grants_chaos_inoculation_definition, maximum_life_definition,
+    test_effect_execution_planner,
 };
 
 fn build_effect_collection() -> EffectCollection<TestGame> {
@@ -74,7 +74,7 @@ fn calculates_final_stats_from_passive_node_and_modifiers() {
     let calculator = EffectCalculator::new(
         TestEffectApplier,
         TestEffectAccumulatorFinalizer,
-        TestEffectPhaseResolver,
+        test_effect_execution_planner(),
     );
     let input = TestCalculationInput {
         base_maximum_life: 100,
@@ -164,7 +164,7 @@ fn calculates_final_stats_from_item_modifiers_and_granted_node() {
     let calculator = EffectCalculator::new(
         TestEffectApplier,
         TestEffectAccumulatorFinalizer,
-        TestEffectPhaseResolver,
+        test_effect_execution_planner(),
     );
     let input = TestCalculationInput {
         base_maximum_life: 100,
@@ -172,6 +172,7 @@ fn calculates_final_stats_from_item_modifiers_and_granted_node() {
     let stats = calculator
         .calculate_from_input(&active, &TestEffectAccumulatorFactory, &input)
         .expect("effect calculation should succeed");
+    
     assert_eq!(stats.maximum_life, 1);
     assert!(stats.chaos_immune);
     assert_eq!(stats.increased_damage_percent, 0);

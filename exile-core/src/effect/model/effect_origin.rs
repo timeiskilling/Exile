@@ -1,6 +1,8 @@
+use std::fmt;
+
 use crate::{game::Game, item::ModifierInstanceId};
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(PartialEq, Eq)]
 pub enum EffectOrigin<G>
 where
     G: Game,
@@ -38,6 +40,33 @@ where
             },
 
             Self::Source(source_id) => Self::Source(source_id.clone()),
+        }
+    }
+}
+
+impl<G> fmt::Debug for EffectOrigin<G>
+where
+    G: Game,
+    G::ModifierDefinitionId: fmt::Debug,
+    G::EffectSourceId: fmt::Debug,
+{
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::ItemModifier {
+                modifier_instance_id,
+                definition_id,
+            } => formatter
+                .debug_struct("ItemModifier")
+                .field("modifier_instance_id", modifier_instance_id)
+                .field("definition_id", definition_id)
+                .finish(),
+
+            Self::ModifierDefinition { definition_id } => formatter
+                .debug_struct("ModifierDefinition")
+                .field("definition_id", definition_id)
+                .finish(),
+
+            Self::Source(source_id) => formatter.debug_tuple("Source").field(source_id).finish(),
         }
     }
 }

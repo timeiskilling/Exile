@@ -13,7 +13,7 @@ use support::{
     game::{TestEffect, TestGame},
 };
 
-use crate::support::{TestEffectPhaseResolver, TestEffectSourceId};
+use crate::support::{TestEffectPhaseResolver, TestEffectPriorityResolver, TestEffectSourceId};
 
 struct OrderedEffectSource;
 
@@ -55,8 +55,11 @@ fn applies_all_active_effects_in_collection_order() {
 
     let collection_applier = EffectCollectionApplier::new(TestEffectApplier);
 
-    let plan = EffectExecutionPlan::build(&active, &TestEffectPhaseResolver);
-
+    let plan = EffectExecutionPlan::build(
+        &active,
+        &TestEffectPhaseResolver,
+        &TestEffectPriorityResolver,
+    );
     collection_applier
         .apply_all(&plan, &mut accumulator)
         .expect("all effects should be applied");
@@ -88,8 +91,11 @@ fn does_not_apply_inactive_effects() {
     let mut accumulator = TestEffectAccumulator::default();
     let collection_applier = EffectCollectionApplier::new(TestEffectApplier);
 
-    let plan = EffectExecutionPlan::build(&active, &TestEffectPhaseResolver);
-
+    let plan = EffectExecutionPlan::build(
+        &active,
+        &TestEffectPhaseResolver,
+        &TestEffectPriorityResolver,
+    );
     collection_applier
         .apply_all(&plan, &mut accumulator)
         .expect("all effects should be applied");
@@ -157,7 +163,11 @@ fn stops_on_first_error_and_keeps_previous_changes() {
 
     let collection_applier = EffectCollectionApplier::new(FailingEffectApplier);
 
-    let plan = EffectExecutionPlan::build(&active, &TestEffectPhaseResolver);
+    let plan = EffectExecutionPlan::build(
+        &active,
+        &TestEffectPhaseResolver,
+        &TestEffectPriorityResolver,
+    );
 
     let result = collection_applier.apply_all(&plan, &mut accumulator);
 

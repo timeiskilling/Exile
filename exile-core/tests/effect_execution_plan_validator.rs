@@ -12,6 +12,8 @@ use support::{
     TestEffectContext, TestEffectPhaseResolver, TestEffectSourceId, TestGame,
 };
 
+use crate::support::TestEffectPriorityResolver;
+
 struct MaximumLifeOverrideSource {
     value: u32,
     source_id: &'static str,
@@ -77,7 +79,11 @@ fn rejects_two_maximum_life_overrides() {
 
     let active = active_effects(&collection);
 
-    let plan = EffectExecutionPlan::build(&active, &TestEffectPhaseResolver);
+    let plan = EffectExecutionPlan::build(
+        &active,
+        &TestEffectPhaseResolver,
+        &TestEffectPriorityResolver,
+    );
 
     let validator = EffectExecutionPlanValidator::new(TestEffectConflictKeyResolver);
 
@@ -111,7 +117,11 @@ fn allows_multiple_additive_effects() {
 
     let active = active_effects(&collection);
 
-    let plan = EffectExecutionPlan::build(&active, &TestEffectPhaseResolver);
+    let plan = EffectExecutionPlan::build(
+        &active,
+        &TestEffectPhaseResolver,
+        &TestEffectPriorityResolver,
+    );
 
     let validator = EffectExecutionPlanValidator::new(TestEffectConflictKeyResolver);
 
@@ -131,8 +141,12 @@ fn allows_single_maximum_life_override() {
 
     let active = active_effects(&collection);
 
-    let plan = EffectExecutionPlan::build(&active, &TestEffectPhaseResolver);
-
+    let plan = EffectExecutionPlan::build(
+        &active,
+        &TestEffectPhaseResolver,
+        &TestEffectPriorityResolver,
+    );
+    
     let validator = EffectExecutionPlanValidator::new(TestEffectConflictKeyResolver);
 
     assert!(matches!(validator.validate(&plan), Ok(())));

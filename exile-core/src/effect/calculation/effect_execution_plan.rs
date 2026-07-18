@@ -1,5 +1,8 @@
 use crate::{
-    effect::{ActiveEffectCollection, SourcedEffectEntry, calculation::EffectPhaseResolver},
+    effect::{
+        ActiveEffectCollection, SourcedEffectEntry,
+        calculation::{EffectPhaseResolver, effect_priority_resolver::EffectPriorityResolver},
+    },
     game::Game,
 };
 
@@ -14,20 +17,37 @@ impl<'a, G> EffectExecutionPlan<'a, G>
 where
     G: Game,
 {
-    pub fn build<R>(effects: &ActiveEffectCollection<'a, G>, phase_resolver: &R) -> Self
+    pub fn build<P, R>(
+        effects: &ActiveEffectCollection<'a, G>,
+        phase_resolver: &R,
+        priority_resolver: &P,
+    ) -> Self
     where
         R: EffectPhaseResolver<G>,
+        P: EffectPriorityResolver<G>,
     {
         let mut entries = effects
             .iter()
             .enumerate()
-            .map(|(index, entry)| (phase_resolver.phase(entry.effect()), index, entry))
+            .map(|(index, entry)| {
+                (
+                    phase_resolver.phase(entry.effect()),
+                    priority_resolver.priority(entry.effect()),
+                    index,
+                    entry,
+                )
+            })
             .collect::<Vec<_>>();
 
-        entries.sort_by(|left, right| left.0.cmp(&right.0).then_with(|| left.1.cmp(&right.1)));
+        entries.sort_by(|left, right| {
+            left.0
+                .cmp(&right.0)
+                .then_with(|| left.1.cmp(&right.1))
+                .then_with(|| left.2.cmp(&right.2))
+        });
 
         Self {
-            entries: entries.into_iter().map(|(_, _, entry)| entry).collect(),
+            entries: entries.into_iter().map(|(_, _, _, entry)| entry).collect(),
         }
     }
 
@@ -45,6 +65,10 @@ where
 
     pub fn effects(&self) -> impl Iterator<Item = &'a G::Effect> + '_ {
         self.entries.iter().copied().map(|entry| entry.effect())
+    }
+
+    pub(crate) fn from_entries(entries: Vec<&'a SourcedEffectEntry<G>>) -> Self {
+        Self { entries }
     }
 }
 

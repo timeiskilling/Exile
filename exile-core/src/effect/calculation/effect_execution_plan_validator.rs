@@ -1,5 +1,6 @@
 use std::{
     collections::{HashMap, hash_map::Entry},
+    fmt,
     hash::Hash,
 };
 
@@ -69,5 +70,27 @@ impl<R> EffectExecutionPlanValidator<R> {
         }
 
         Ok(())
+    }
+}
+
+impl<G, K> fmt::Debug for EffectExecutionPlanValidationError<G, K>
+where
+    G: Game,
+    K: fmt::Debug,
+    EffectOrigin<G>: fmt::Debug,
+{
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::ConflictingExclusiveEffects {
+                key,
+                first_origin,
+                second_origin,
+            } => formatter
+                .debug_struct("ConflictingExclusiveEffects")
+                .field("key", key)
+                .field("first_origin", first_origin)
+                .field("second_origin", second_origin)
+                .finish(),
+        }
     }
 }

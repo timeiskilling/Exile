@@ -10,6 +10,8 @@ use support::{
     TestEffectSourceId, TestGame,
 };
 
+use crate::support::TestEffectPriorityResolver;
+
 struct UnorderedPhaseSource;
 
 impl EffectSource<TestGame> for UnorderedPhaseSource {
@@ -28,9 +30,8 @@ impl EffectSource<TestGame> for UnorderedPhaseSource {
         ]
     }
 }
-
 #[test]
-fn orders_active_effects_by_phase() {
+fn orders_active_effects_by_phase_and_priority() {
     let mut collection = EffectCollection::<TestGame>::new();
 
     collection.collect_from_source(&UnorderedPhaseSource);
@@ -46,7 +47,11 @@ fn orders_active_effects_by_phase() {
         .collect_active(&collection, &context)
         .expect("condition evaluation should succeed");
 
-    let plan = EffectExecutionPlan::build(&active, &TestEffectPhaseResolver);
+    let plan = EffectExecutionPlan::build(
+        &active,
+        &TestEffectPhaseResolver,
+        &TestEffectPriorityResolver,
+    );
 
     let effects = plan.effects().collect::<Vec<_>>();
 
@@ -66,9 +71,9 @@ fn orders_active_effects_by_phase() {
         &TestEffect::IncreasedMovementSpeed { percent: 15 },
     );
 
-    assert_eq!(effects[4], &TestEffect::SetMaximumLife { value: 1 },);
+    assert_eq!(effects[4], &TestEffect::ChaosImmune,);
 
-    assert_eq!(effects[5], &TestEffect::ChaosImmune,);
+    assert_eq!(effects[5], &TestEffect::SetMaximumLife { value: 1 },);
 }
 
 #[test]
@@ -88,7 +93,11 @@ fn execution_plan_preserves_effect_origins() {
         .collect_active(&collection, &context)
         .expect("condition evaluation should succeed");
 
-    let plan = EffectExecutionPlan::build(&active, &TestEffectPhaseResolver);
+    let plan = EffectExecutionPlan::build(
+        &active,
+        &TestEffectPhaseResolver,
+        &TestEffectPriorityResolver,
+    );
 
     for entry in &plan {
         assert!(matches!(

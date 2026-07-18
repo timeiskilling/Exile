@@ -1,38 +1,41 @@
 use crate::{
     effect::{
         ActiveEffectCollection, EffectAccumulatorFactory, EffectAccumulatorFinalizer,
-        EffectApplier, EffectCollectionApplier,
-        calculation::{EffectExecutionPlan, EffectPhaseResolver},
+        EffectApplier, EffectCollectionApplier, calculation::EffectPlanner,
     },
     game::Game,
 };
 
-type EffectCalculationResult<G, A, F> = Result<
+type EffectCalculationResult<G, A, F, P> = Result<
     <F as EffectAccumulatorFinalizer>::Output,
     EffectCalculationError<
+        <P as EffectPlanner<G>>::Error,
         <A as EffectApplier<G>>::Error,
         <F as EffectAccumulatorFinalizer>::Error,
     >,
 >;
 
-type EffectCalculationFromInputResult<G, A, F, Factory> = Result<
+type EffectCalculationFromInputResult<G, A, F, P, Factory> = Result<
     <F as EffectAccumulatorFinalizer>::Output,
     EffectCalculationFromInputError<
         <Factory as EffectAccumulatorFactory>::Error,
+        <P as EffectPlanner<G>>::Error,
         <A as EffectApplier<G>>::Error,
         <F as EffectAccumulatorFinalizer>::Error,
     >,
 >;
 
 #[derive(Debug, PartialEq, Eq)]
-pub enum EffectCalculationError<ApplyError, FinalizeError> {
+pub enum EffectCalculationError<PlanError, ApplyError, FinalizeError> {
+    Plan(PlanError),
     Apply(ApplyError),
     Finalize(FinalizeError),
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub enum EffectCalculationFromInputError<CreateError, ApplyError, FinalizeError> {
+pub enum EffectCalculationFromInputError<CreateError, PlanError, ApplyError, FinalizeError> {
     CreateAccumulator(CreateError),
+    Plan(PlanError),
     Apply(ApplyError),
     Finalize(FinalizeError),
 }
@@ -40,15 +43,15 @@ pub enum EffectCalculationFromInputError<CreateError, ApplyError, FinalizeError>
 pub struct EffectCalculator<A, F, P> {
     collection_applier: EffectCollectionApplier<A>,
     finalizer: F,
-    phase_resolver: P,
+    planner: P,
 }
 
 impl<A, F, P> EffectCalculator<A, F, P> {
-    pub fn new(effect_applier: A, finalizer: F, phase_resolver: P) -> Self {
+    pub fn new(effect_applier: A, finalizer: F, planner: P) -> Self {
         Self {
             collection_applier: EffectCollectionApplier::new(effect_applier),
             finalizer,
-            phase_resolver,
+            planner,
         }
     }
 
@@ -56,14 +59,17 @@ impl<A, F, P> EffectCalculator<A, F, P> {
         &self,
         effects: &ActiveEffectCollection<'_, G>,
         mut accumulator: <A as EffectApplier<G>>::Accumulator,
-    ) -> EffectCalculationResult<G, A, F>
+    ) -> EffectCalculationResult<G, A, F, P>
     where
         G: Game,
         A: EffectApplier<G>,
         F: EffectAccumulatorFinalizer<Accumulator = <A as EffectApplier<G>>::Accumulator>,
-        P: EffectPhaseResolver<G>,
+        P: EffectPlanner<G>,
     {
-        let plan = EffectExecutionPlan::build(effects, &self.phase_resolver);
+        let plan = self
+            .planner
+            .plan(effects)
+            .map_err(EffectCalculationError::Plan)?;
 
         self.collection_applier
             .apply_all(&plan, &mut accumulator)
@@ -79,13 +85,13 @@ impl<A, F, P> EffectCalculator<A, F, P> {
         effects: &ActiveEffectCollection<'_, G>,
         factory: &Factory,
         input: &<Factory as EffectAccumulatorFactory>::Input,
-    ) -> EffectCalculationFromInputResult<G, A, F, Factory>
+    ) -> EffectCalculationFromInputResult<G, A, F, P, Factory>
     where
         G: Game,
         A: EffectApplier<G>,
         Factory: EffectAccumulatorFactory<Accumulator = <A as EffectApplier<G>>::Accumulator>,
         F: EffectAccumulatorFinalizer<Accumulator = <A as EffectApplier<G>>::Accumulator>,
-        P: EffectPhaseResolver<G>,
+        P: EffectPlanner<G>,
     {
         let accumulator = factory
             .create(input)
@@ -93,6 +99,10 @@ impl<A, F, P> EffectCalculator<A, F, P> {
 
         match self.calculate(effects, accumulator) {
             Ok(output) => Ok(output),
+
+            Err(EffectCalculationError::Plan(error)) => {
+                Err(EffectCalculationFromInputError::Plan(error))
+            }
 
             Err(EffectCalculationError::Apply(error)) => {
                 Err(EffectCalculationFromInputError::Apply(error))

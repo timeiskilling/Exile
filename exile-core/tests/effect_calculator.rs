@@ -3,9 +3,9 @@ mod support;
 use std::convert::Infallible;
 
 use exile_core::effect::{
-    EffectAccumulatorFactory, EffectAccumulatorFinalizer, EffectApplier, EffectCollection,
-    EffectCollectionEvaluator, EffectEntry, EffectSource,
-    {EffectCalculationError, EffectCalculationFromInputError, EffectCalculator},
+    EffectAccumulatorFactory, EffectAccumulatorFinalizer, EffectApplier, EffectCalculationError,
+    EffectCalculationFromInputError, EffectCalculator, EffectCollection, EffectCollectionEvaluator,
+    EffectEntry, EffectSource, calculation::EffectExecutionPlanValidationError,
 };
 
 use support::{
@@ -17,8 +17,39 @@ use support::{
 };
 
 use crate::support::{
-    TestCalculationInput, TestEffectAccumulatorFactory, TestEffectPhaseResolver, TestEffectSourceId,
+    TestCalculationInput, TestEffectAccumulatorFactory, TestEffectConflictKey, TestEffectSourceId,
+    test_effect_execution_planner,
 };
+
+struct ConflictingMaximumLifeSource;
+
+impl EffectSource<TestGame> for ConflictingMaximumLifeSource {
+    fn effect_source_id(&self) -> TestEffectSourceId {
+        TestEffectSourceId::Synthetic("conflicting_maximum_life_source")
+    }
+
+    fn collect_effects(&self) -> Vec<EffectEntry<TestGame>> {
+        vec![
+            EffectEntry::unconditional(TestEffect::SetMaximumLife { value: 1 }),
+            EffectEntry::unconditional(TestEffect::SetMaximumLife { value: 10 }),
+        ]
+    }
+}
+
+struct PanicEffectApplier;
+
+impl EffectApplier<TestGame> for PanicEffectApplier {
+    type Accumulator = ();
+    type Error = Infallible;
+
+    fn apply_effect(
+        &self,
+        _effect: &TestEffect,
+        _accumulator: &mut Self::Accumulator,
+    ) -> Result<(), Self::Error> {
+        panic!("effect applier must not run after plan error");
+    }
+}
 
 #[test]
 fn calculates_final_stats_from_active_effects() {
@@ -42,7 +73,7 @@ fn calculates_final_stats_from_active_effects() {
     let calculator = EffectCalculator::new(
         TestEffectApplier,
         TestEffectAccumulatorFinalizer,
-        TestEffectPhaseResolver,
+        test_effect_execution_planner(),
     );
     let accumulator = TestEffectAccumulator::with_base_maximum_life(100);
 
@@ -111,7 +142,7 @@ fn returns_apply_error_and_skips_finalization() {
     let calculator = EffectCalculator::new(
         FailingEffectApplier,
         PanicFinalizer,
-        TestEffectPhaseResolver,
+        test_effect_execution_planner(),
     );
 
     let result = calculator.calculate(&active, ());
@@ -158,7 +189,7 @@ fn returns_finalize_error_after_successful_application() {
     let calculator = EffectCalculator::new(
         TestEffectApplier,
         TestEffectAccumulatorFinalizer,
-        TestEffectPhaseResolver,
+        test_effect_execution_planner(),
     );
     let accumulator = TestEffectAccumulator::with_base_maximum_life(u32::MAX);
 
@@ -194,7 +225,7 @@ fn calculates_final_stats_directly_from_input() {
     let calculator = EffectCalculator::new(
         TestEffectApplier,
         TestEffectAccumulatorFinalizer,
-        TestEffectPhaseResolver,
+        test_effect_execution_planner(),
     );
     let input = TestCalculationInput {
         base_maximum_life: 100,
@@ -244,7 +275,7 @@ fn returns_accumulator_creation_error() {
     let calculator = EffectCalculator::new(
         TestEffectApplier,
         TestEffectAccumulatorFinalizer,
-        TestEffectPhaseResolver,
+        test_effect_execution_planner(),
     );
     let input = TestCalculationInput {
         base_maximum_life: 0,
@@ -343,7 +374,7 @@ fn calculator_applies_effects_in_phase_order() {
     let calculator = EffectCalculator::new(
         RecordingOrderApplier,
         RecordingOrderFinalizer,
-        TestEffectPhaseResolver,
+        test_effect_execution_planner(),
     );
 
     let applied = calculator
@@ -351,4 +382,40 @@ fn calculator_applies_effects_in_phase_order() {
         .expect("calculation should succeed");
 
     assert_eq!(applied, vec!["added", "increased", "final",],);
+}
+
+#[test]
+fn returns_plan_error_and_skips_application_and_finalization() {
+    let mut collection = EffectCollection::<TestGame>::new();
+
+    collection.collect_from_source(&ConflictingMaximumLifeSource);
+
+    let evaluator = EffectCollectionEvaluator::new(TestEffectConditionEvaluator);
+
+    let context = TestEffectContext {
+        enemy_current_life: 100,
+        enemy_maximum_life: 100,
+    };
+
+    let active = evaluator
+        .collect_active(&collection, &context)
+        .expect("condition evaluation should succeed");
+
+    let calculator = EffectCalculator::new(
+        PanicEffectApplier,
+        PanicFinalizer,
+        test_effect_execution_planner(),
+    );
+
+    let result = calculator.calculate(&active, ());
+
+    assert!(matches!(
+        result,
+        Err(EffectCalculationError::Plan(
+            EffectExecutionPlanValidationError::ConflictingExclusiveEffects {
+                key: TestEffectConflictKey::MaximumLifeOverride,
+                ..
+            }
+        ))
+    ));
 }
