@@ -4,10 +4,7 @@ use std::convert::Infallible;
 use exile_core::effect::{
     EffectAccumulatorFactory, EffectAccumulatorFinalizer, EffectApplier, EffectConditionEvaluator,
     EffectEntry, EffectSource, ModifierEffectResolver, PassiveNodeProvider,
-    calculation::{
-        EffectConflictKeyResolver, EffectExecutionPlanner, EffectPhaseResolver,
-        EffectPriorityResolver, EffectStrengthResolver,
-    },
+    calculation::{EffectExecutionPlanner, EffectPlanningPolicy},
 };
 
 use crate::support::{TestEffectSourceId, TestPassiveNodeId};
@@ -181,7 +178,9 @@ pub struct TestEffectAccumulator {
 
     pub added_physical_damage_min: u32,
     pub added_physical_damage_max: u32,
+
     pub minimum_movement_speed_percent: u32,
+    pub maximum_movement_speed_percent: Option<u32>,
 }
 
 impl TestEffectAccumulator {
@@ -200,7 +199,6 @@ pub enum TestEffectApplyError {
     IncreasedMovementSpeed,
     AddedPhysicalDamageMinimum,
     AddedPhysicalDamageMaximum,
-    MinimumMovementSpeed,
 }
 
 pub struct TestEffectApplier;
@@ -266,12 +264,11 @@ impl EffectApplier<TestGame> for TestEffectApplier {
                 accumulator.added_physical_damage_max = next_max;
             }
             TestEffect::MinimumMovementSpeed { percent } => {
-                let next = accumulator
-                    .minimum_movement_speed_percent
-                    .checked_add(u32::from(*percent))
-                    .ok_or(TestEffectApplyError::MinimumMovementSpeed)?;
+                accumulator.minimum_movement_speed_percent = u32::from(*percent);
+            }
 
-                accumulator.minimum_movement_speed_percent = next;
+            TestEffect::MaximumMovementSpeed { percent } => {
+                accumulator.maximum_movement_speed_percent = Some(u32::from(*percent));
             }
         }
 
@@ -283,11 +280,15 @@ impl EffectApplier<TestGame> for TestEffectApplier {
 pub struct TestFinalStats {
     pub maximum_life: u32,
     pub chaos_immune: bool,
+
     pub increased_damage_percent: u32,
     pub increased_movement_speed_percent: u32,
 
     pub added_physical_damage_min: u32,
     pub added_physical_damage_max: u32,
+
+    pub minimum_movement_speed_percent: u32,
+    pub maximum_movement_speed_percent: Option<u32>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -323,6 +324,10 @@ impl EffectAccumulatorFinalizer for TestEffectAccumulatorFinalizer {
             added_physical_damage_min: accumulator.added_physical_damage_min,
 
             added_physical_damage_max: accumulator.added_physical_damage_max,
+
+            minimum_movement_speed_percent: accumulator.minimum_movement_speed_percent,
+
+            maximum_movement_speed_percent: accumulator.maximum_movement_speed_percent,
         })
     }
 }
@@ -401,10 +406,31 @@ pub enum TestEffectPhase {
     Final,
 }
 
-pub struct TestEffectPhaseResolver;
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum TestEffectPriority {
+    Early,
+    Normal,
+    Late,
+}
 
-impl EffectPhaseResolver<TestGame> for TestEffectPhaseResolver {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum TestEffectConflictKey {
+    MaximumLifeOverride,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum TestEffectSelectionKey {
+    MinimumMovementSpeed,
+    MaximumMovementSpeed,
+}
+
+pub struct TestEffectPlanningPolicy;
+
+impl EffectPlanningPolicy<TestGame> for TestEffectPlanningPolicy {
     type Phase = TestEffectPhase;
+    type Priority = TestEffectPriority;
+    type ConflictKey = TestEffectConflictKey;
+    type SelectionKey = TestEffectSelectionKey;
 
     fn phase(&self, effect: &TestEffect) -> Self::Phase {
         match effect {
@@ -416,91 +442,62 @@ impl EffectPhaseResolver<TestGame> for TestEffectPhaseResolver {
                 TestEffectPhase::Increased
             }
 
-            TestEffect::ChaosImmune | TestEffect::SetMaximumLife { .. } => TestEffectPhase::Final,
-            TestEffect::MinimumMovementSpeed { .. } => TestEffectPhase::Final,
+            TestEffect::ChaosImmune
+            | TestEffect::SetMaximumLife { .. }
+            | TestEffect::MinimumMovementSpeed { .. }
+            | TestEffect::MaximumMovementSpeed { .. } => TestEffectPhase::Final,
         }
     }
-}
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum TestEffectConflictKey {
-    MaximumLifeOverride,
-}
+    fn priority(&self, effect: &TestEffect) -> Self::Priority {
+        match effect {
+            TestEffect::ChaosImmune => TestEffectPriority::Early,
 
-pub struct TestEffectConflictKeyResolver;
+            TestEffect::SetMaximumLife { .. } => TestEffectPriority::Late,
 
-impl EffectConflictKeyResolver<TestGame> for TestEffectConflictKeyResolver {
-    type Key = TestEffectConflictKey;
+            _ => TestEffectPriority::Normal,
+        }
+    }
 
-    fn conflict_key(&self, effect: &TestEffect) -> Option<Self::Key> {
+    fn conflict_key(&self, effect: &TestEffect) -> Option<Self::ConflictKey> {
         match effect {
             TestEffect::SetMaximumLife { .. } => Some(TestEffectConflictKey::MaximumLifeOverride),
 
             _ => None,
         }
     }
-}
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub enum TestEffectPriority {
-    Erarly,
-    Normal,
-    Late,
-}
-
-pub struct TestEffectPriorityResolver;
-
-impl EffectPriorityResolver<TestGame> for TestEffectPriorityResolver {
-    type Priority = TestEffectPriority;
-
-    fn priority(&self, effect: &<TestGame as exile_core::game::Game>::Effect) -> Self::Priority {
+    fn selection_key(&self, effect: &TestEffect) -> Option<Self::SelectionKey> {
         match effect {
-            TestEffect::ChaosImmune => TestEffectPriority::Erarly,
-            TestEffect::SetMaximumLife { .. } => TestEffectPriority::Late,
-            TestEffect::IncreasedDamage { .. } | TestEffect::IncreasedMovementSpeed { .. } => {
-                TestEffectPriority::Normal
+            TestEffect::MinimumMovementSpeed { .. } => {
+                Some(TestEffectSelectionKey::MinimumMovementSpeed)
             }
-            TestEffect::AddedMaximumLife { .. } => TestEffectPriority::Erarly,
-            TestEffect::AddedPhysicalDamage { .. } => TestEffectPriority::Erarly,
-            TestEffect::MinimumMovementSpeed { .. } => TestEffectPriority::Normal,
-        }
-    }
-}
 
-pub fn test_effect_execution_planner() -> EffectExecutionPlanner<
-    TestEffectPhaseResolver,
-    TestEffectConflictKeyResolver,
-    TestEffectPriorityResolver,
-    TestEffectStrengthResolver,
-> {
-    EffectExecutionPlanner::new(
-        TestEffectPhaseResolver,
-        TestEffectConflictKeyResolver,
-        TestEffectPriorityResolver,
-        TestEffectStrengthResolver,
-    )
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum TestEffectStrengthKey {
-    MinimumMovementSpeed,
-}
-
-pub struct TestEffectStrengthResolver;
-
-impl EffectStrengthResolver<TestGame> for TestEffectStrengthResolver {
-    type Key = TestEffectStrengthKey;
-    type Strength = u16;
-
-    fn strength(
-        &self,
-        effect: &<TestGame as exile_core::game::Game>::Effect,
-    ) -> Option<(Self::Key, Self::Strength)> {
-        match effect {
-            TestEffect::MinimumMovementSpeed { percent } => {
-                Some((TestEffectStrengthKey::MinimumMovementSpeed, *percent))
+            TestEffect::MaximumMovementSpeed { .. } => {
+                Some(TestEffectSelectionKey::MaximumMovementSpeed)
             }
+
             _ => None,
         }
     }
+
+    fn prefers(&self, candidate: &TestEffect, current: &TestEffect) -> bool {
+        match (candidate, current) {
+            (
+                TestEffect::MinimumMovementSpeed { percent: candidate },
+                TestEffect::MinimumMovementSpeed { percent: current },
+            ) => candidate > current,
+
+            (
+                TestEffect::MaximumMovementSpeed { percent: candidate },
+                TestEffect::MaximumMovementSpeed { percent: current },
+            ) => candidate < current,
+
+            _ => false,
+        }
+    }
+}
+
+pub fn test_effect_execution_planner() -> EffectExecutionPlanner<TestEffectPlanningPolicy> {
+    EffectExecutionPlanner::new(TestEffectPlanningPolicy)
 }

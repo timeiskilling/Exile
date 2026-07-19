@@ -6,11 +6,10 @@ use exile_core::effect::{
 };
 
 use support::{
-    TestEffect, TestEffectConditionEvaluator, TestEffectContext, TestEffectPhaseResolver,
-    TestEffectSourceId, TestGame,
+    TestEffect, TestEffectConditionEvaluator, TestEffectContext, TestEffectSourceId, TestGame,
 };
 
-use crate::support::TestEffectPriorityResolver;
+use crate::support::TestEffectPlanningPolicy;
 
 struct UnorderedPhaseSource;
 
@@ -47,12 +46,7 @@ fn orders_active_effects_by_phase_and_priority() {
         .collect_active(&collection, &context)
         .expect("condition evaluation should succeed");
 
-    let plan = EffectExecutionPlan::build(
-        &active,
-        &TestEffectPhaseResolver,
-        &TestEffectPriorityResolver,
-    );
-
+    let plan = EffectExecutionPlan::build(&active, &TestEffectPlanningPolicy);
     let effects = plan.effects().collect::<Vec<_>>();
 
     assert_eq!(effects.len(), 6);
@@ -93,11 +87,7 @@ fn execution_plan_preserves_effect_origins() {
         .collect_active(&collection, &context)
         .expect("condition evaluation should succeed");
 
-    let plan = EffectExecutionPlan::build(
-        &active,
-        &TestEffectPhaseResolver,
-        &TestEffectPriorityResolver,
-    );
+    let plan = EffectExecutionPlan::build(&active, &TestEffectPlanningPolicy);
 
     for entry in &plan {
         assert!(matches!(

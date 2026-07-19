@@ -1,7 +1,10 @@
 use crate::{
     effect::{
         ActiveEffectCollection, SourcedEffectEntry,
-        calculation::{EffectPhaseResolver, effect_priority_resolver::EffectPriorityResolver},
+        calculation::{
+            effect_planning_policy::EffectPlanningPolicy,
+            effect_selection_rejection::EffectSelectionRejection,
+        },
     },
     game::Game,
 };
@@ -11,28 +14,24 @@ where
     G: Game,
 {
     entries: Vec<&'a SourcedEffectEntry<G>>,
+    selection_rejections: Vec<EffectSelectionRejection<'a, G>>,
 }
 
 impl<'a, G> EffectExecutionPlan<'a, G>
 where
     G: Game,
 {
-    pub fn build<P, R>(
-        effects: &ActiveEffectCollection<'a, G>,
-        phase_resolver: &R,
-        priority_resolver: &P,
-    ) -> Self
+    pub fn build<P>(effects: &ActiveEffectCollection<'a, G>, policy: &P) -> Self
     where
-        R: EffectPhaseResolver<G>,
-        P: EffectPriorityResolver<G>,
+        P: EffectPlanningPolicy<G>,
     {
         let mut entries = effects
             .iter()
             .enumerate()
             .map(|(index, entry)| {
                 (
-                    phase_resolver.phase(entry.effect()),
-                    priority_resolver.priority(entry.effect()),
+                    policy.phase(entry.effect()),
+                    policy.priority(entry.effect()),
                     index,
                     entry,
                 )
@@ -48,11 +47,39 @@ where
 
         Self {
             entries: entries.into_iter().map(|(_, _, _, entry)| entry).collect(),
+            selection_rejections: Vec::new(),
         }
+    }
+
+    pub(crate) fn from_entries(
+        entries: Vec<&'a SourcedEffectEntry<G>>,
+        selection_rejections: Vec<EffectSelectionRejection<'a, G>>,
+    ) -> Self {
+        Self {
+            entries,
+            selection_rejections,
+        }
+    }
+
+    pub(crate) fn into_parts(
+        self,
+    ) -> (
+        Vec<&'a SourcedEffectEntry<G>>,
+        Vec<EffectSelectionRejection<'a, G>>,
+    ) {
+        (self.entries, self.selection_rejections)
     }
 
     pub fn len(&self) -> usize {
         self.entries.len()
+    }
+
+    pub fn selection_rejections(&self) -> impl Iterator<Item = &EffectSelectionRejection<'a, G>> {
+        self.selection_rejections.iter()
+    }
+
+    pub fn selection_rejection_count(&self) -> usize {
+        self.selection_rejections.len()
     }
 
     pub fn is_empty(&self) -> bool {
@@ -64,11 +91,19 @@ where
     }
 
     pub fn effects(&self) -> impl Iterator<Item = &'a G::Effect> + '_ {
-        self.entries.iter().copied().map(|entry| entry.effect())
+        self.iter().map(SourcedEffectEntry::effect)
     }
+}
 
-    pub(crate) fn from_entries(entries: Vec<&'a SourcedEffectEntry<G>>) -> Self {
-        Self { entries }
+impl<'a, G> IntoIterator for EffectExecutionPlan<'a, G>
+where
+    G: Game,
+{
+    type Item = &'a SourcedEffectEntry<G>;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.entries.into_iter()
     }
 }
 
@@ -82,18 +117,5 @@ where
 
     fn into_iter(self) -> Self::IntoIter {
         self.entries.iter().copied()
-    }
-}
-
-impl<'a, G> IntoIterator for EffectExecutionPlan<'a, G>
-where
-    G: Game,
-{
-    type Item = &'a SourcedEffectEntry<G>;
-
-    type IntoIter = std::vec::IntoIter<&'a SourcedEffectEntry<G>>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.entries.into_iter()
     }
 }

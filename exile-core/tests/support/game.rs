@@ -50,15 +50,16 @@ pub enum TestModifier {
     NoRoll,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TestEffect {
     ChaosImmune,
     SetMaximumLife { value: u32 },
+    AddedMaximumLife { amount: u16 },
     IncreasedDamage { percent: u16 },
     IncreasedMovementSpeed { percent: u16 },
-    AddedMaximumLife { amount: u16 },
     AddedPhysicalDamage { min: u16, max: u16 },
     MinimumMovementSpeed { percent: u16 },
+    MaximumMovementSpeed { percent: u16 },
 }
 
 #[derive(Debug, PartialEq)]
