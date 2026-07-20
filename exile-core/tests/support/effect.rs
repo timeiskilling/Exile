@@ -2,8 +2,9 @@
 use std::convert::Infallible;
 
 use exile_core::effect::{
-    EffectAccumulatorFactory, EffectAccumulatorFinalizer, EffectApplier, EffectConditionEvaluator,
-    EffectEntry, EffectSource, ModifierEffectResolver, PassiveNodeProvider,
+    CalculationOutputComparator, EffectAccumulatorFactory, EffectAccumulatorFinalizer,
+    EffectApplier, EffectConditionEvaluator, EffectEntry, EffectSource, ModifierEffectResolver,
+    NumericStatDifference, PassiveNodeProvider, StatValueDifference,
     calculation::{EffectExecutionPlanner, EffectPlanningPolicy},
 };
 
@@ -276,7 +277,7 @@ impl EffectApplier<TestGame> for TestEffectApplier {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct TestFinalStats {
     pub maximum_life: u32,
     pub chaos_immune: bool,
@@ -500,4 +501,67 @@ impl EffectPlanningPolicy<TestGame> for TestEffectPlanningPolicy {
 
 pub fn test_effect_execution_planner() -> EffectExecutionPlanner<TestEffectPlanningPolicy> {
     EffectExecutionPlanner::new(TestEffectPlanningPolicy)
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct TestFinalStatsDifference {
+    pub maximum_life: NumericStatDifference,
+    pub chaos_immune: StatValueDifference<bool>,
+    pub increased_damage_percent: NumericStatDifference,
+    pub increased_movement_speed_percent: NumericStatDifference,
+    pub added_physical_damage_min: NumericStatDifference,
+    pub added_physical_damage_max: NumericStatDifference,
+    pub minimum_movement_speed_percent: NumericStatDifference,
+    pub maximum_movement_speed_percent: StatValueDifference<Option<u32>>,
+}
+
+pub struct TestFinalStatsComparator;
+
+fn numeric_u32_difference(baseline: u32, candidate: u32) -> NumericStatDifference {
+    NumericStatDifference::between(f64::from(baseline), f64::from(candidate))
+}
+
+impl CalculationOutputComparator<TestFinalStats> for TestFinalStatsComparator {
+    type Difference = TestFinalStatsDifference;
+
+    fn compare(&self, baseline: &TestFinalStats, candidate: &TestFinalStats) -> Self::Difference {
+        TestFinalStatsDifference {
+            maximum_life: numeric_u32_difference(baseline.maximum_life, candidate.maximum_life),
+
+            chaos_immune: StatValueDifference::between(
+                baseline.chaos_immune,
+                candidate.chaos_immune,
+            ),
+
+            increased_damage_percent: numeric_u32_difference(
+                baseline.increased_damage_percent,
+                candidate.increased_damage_percent,
+            ),
+
+            increased_movement_speed_percent: numeric_u32_difference(
+                baseline.increased_movement_speed_percent,
+                candidate.increased_movement_speed_percent,
+            ),
+
+            added_physical_damage_min: numeric_u32_difference(
+                baseline.added_physical_damage_min,
+                candidate.added_physical_damage_min,
+            ),
+
+            added_physical_damage_max: numeric_u32_difference(
+                baseline.added_physical_damage_max,
+                candidate.added_physical_damage_max,
+            ),
+
+            minimum_movement_speed_percent: numeric_u32_difference(
+                baseline.minimum_movement_speed_percent,
+                candidate.minimum_movement_speed_percent,
+            ),
+
+            maximum_movement_speed_percent: StatValueDifference::between(
+                baseline.maximum_movement_speed_percent,
+                candidate.maximum_movement_speed_percent,
+            ),
+        }
+    }
 }
