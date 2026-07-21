@@ -17,7 +17,9 @@ mod numeric_stat_difference;
 mod stat_value_difference;
 
 pub use calculation_baseline::CalculationBaseline;
-pub use calculation_comparison_runner::{CalculationComparisonError, CalculationComparisonRunner};
+pub use calculation_comparison_runner::{
+    CalculationComparisonError, CalculationComparisonRunner, CandidateComparisonError,
+};
 pub use calculation_output_comparator::CalculationOutputComparator;
 pub use effect_accumulator_factory::EffectAccumulatorFactory;
 pub use effect_accumulator_finalizer::EffectAccumulatorFinalizer;

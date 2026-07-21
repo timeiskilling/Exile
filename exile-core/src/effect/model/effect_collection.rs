@@ -60,6 +60,16 @@ where
         }
     }
 
+    pub fn collect_from_sources<'a, I, S>(&mut self, sources: I)
+    where
+        I: IntoIterator<Item = &'a S>,
+        S: EffectSource<G> + 'a,
+    {
+        for source in sources {
+            self.collect_from_source(source);
+        }
+    }
+
     pub fn collect_from_modifier<R>(
         &mut self,
         resolver: &R,
@@ -96,6 +106,29 @@ where
         let entries = collector.collect(item)?;
 
         self.entries.extend(entries);
+
+        Ok(())
+    }
+
+    pub fn collect_from_items<'a, I, P, R>(
+        &mut self,
+        collector: &ItemEffectCollector<'_, P, R>,
+        items: I,
+    ) -> ItemEffectCollectionResult<P, R, G>
+    where
+        G: 'a,
+        G::ModifierDefinitionId: Clone,
+        I: IntoIterator<Item = &'a ItemInstance<G, Validated>>,
+        P: ModifierDefinitionProvider<G>,
+        R: ModifierEffectResolver<G>,
+    {
+        let mut collected = EffectCollection::<G>::new();
+
+        for item in items {
+            collected.collect_from_item(collector, item)?;
+        }
+
+        self.entries.extend(collected.entries);
 
         Ok(())
     }

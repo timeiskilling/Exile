@@ -4,8 +4,9 @@ use std::cell::Cell;
 
 use exile_core::effect::{
     ActiveEffectCollection, CalculationComparisonError, CalculationComparisonRunner,
-    EffectAccumulatorFactory, EffectCalculationFromInputError, EffectCalculator, EffectCollection,
-    EffectCollectionEvaluator, EffectEntry, EffectExecutionPlanValidationError, EffectSource,
+    CandidateComparisonError, EffectAccumulatorFactory, EffectCalculationFromInputError,
+    EffectCalculator, EffectCollection, EffectCollectionEvaluator, EffectEntry,
+    EffectExecutionPlanValidationError, EffectSource,
 };
 
 use support::{
@@ -18,6 +19,9 @@ use support::{
 };
 
 use crate::support::TestEffectAccumulator;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct TestCalculationRevision(u64);
 
 struct StaticEffectSource {
     id: &'static str,
@@ -405,8 +409,10 @@ fn runner_reuses_baseline_for_multiple_candidates() {
         base_maximum_life: 100,
     };
 
+    let revision = TestCalculationRevision(10);
+
     let baseline = runner
-        .calculate_baseline_from_input(&calculator, &baseline_active, &factory, &input)
+        .calculate_baseline_from_input(revision, &calculator, &baseline_active, &factory, &input)
         .expect("baseline calculation should succeed");
 
     assert_eq!(factory.calls(), 1);
@@ -417,6 +423,7 @@ fn runner_reuses_baseline_for_multiple_candidates() {
         .compare_candidate_from_input(
             &calculator,
             &baseline,
+            &revision,
             &first_candidate_active,
             &factory,
             &input,
@@ -435,6 +442,7 @@ fn runner_reuses_baseline_for_multiple_candidates() {
         .compare_candidate_from_input(
             &calculator,
             &baseline,
+            &revision,
             &second_candidate_active,
             &factory,
             &input,
@@ -476,7 +484,10 @@ fn baseline_snapshot_returns_baseline_calculation_error() {
         base_maximum_life: 100,
     };
 
+    let revision = TestCalculationRevision(10);
+
     let result = runner.calculate_baseline_from_input(
+        revision,
         &calculator,
         &baseline_active,
         &TestEffectAccumulatorFactory,
@@ -522,8 +533,11 @@ fn cached_baseline_comparison_returns_candidate_error() {
         base_maximum_life: 100,
     };
 
+    let revision = TestCalculationRevision(10);
+
     let baseline = runner
         .calculate_baseline_from_input(
+            revision,
             &calculator,
             &baseline_active,
             &TestEffectAccumulatorFactory,
@@ -534,6 +548,7 @@ fn cached_baseline_comparison_returns_candidate_error() {
     let result = runner.compare_candidate_from_input(
         &calculator,
         &baseline,
+        &revision,
         &candidate_active,
         &TestEffectAccumulatorFactory,
         &input,
@@ -541,11 +556,13 @@ fn cached_baseline_comparison_returns_candidate_error() {
 
     assert!(matches!(
         result,
-        Err(EffectCalculationFromInputError::Plan(
-            EffectExecutionPlanValidationError::ConflictingExclusiveEffects {
-                key: TestEffectConflictKey::MaximumLifeOverride,
-                ..
-            }
+        Err(CandidateComparisonError::Calculation(
+            EffectCalculationFromInputError::Plan(
+                EffectExecutionPlanValidationError::ConflictingExclusiveEffects {
+                    key: TestEffectConflictKey::MaximumLifeOverride,
+                    ..
+                }
+            )
         ))
     ));
 }

@@ -13,6 +13,15 @@ pub enum CalculationComparisonError<E> {
     Candidate(E),
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CandidateComparisonError<R, E> {
+    StaleBaseline {
+        baseline_revision: R,
+        current_revision: R,
+    },
+    Calculation(E),
+}
+
 pub type FinalizedCalculationOutput<F> = <F as EffectAccumulatorFinalizer>::Output;
 
 pub type CalculationOutputDifference<F, C> =
@@ -36,13 +45,18 @@ pub type CalculationComparisonFromInputResult<G, A, F, P, Factory, C> = Result<
     CalculationComparisonFromInputError<G, A, F, P, Factory>,
 >;
 
-pub type CalculationBaselineFromInputResult<G, A, F, P, Factory> = Result<
-    CalculationBaseline<<F as EffectAccumulatorFinalizer>::Output>,
-    CalculationFromInputErrorFor<G, A, F, P, Factory>,
->;
+pub type CalculationBaselineOutput<R, F> = CalculationBaseline<R, FinalizedCalculationOutput<F>>;
 
-pub type CandidateComparisonFromInputResult<G, A, F, P, Factory, C> =
-    Result<CalculationComparisonOutput<F, C>, CalculationFromInputErrorFor<G, A, F, P, Factory>>;
+pub type CalculationBaselineFromInputResult<R, G, A, F, P, Factory> =
+    Result<CalculationBaselineOutput<R, F>, CalculationFromInputErrorFor<G, A, F, P, Factory>>;
+
+pub type CandidateComparisonFromInputError<R, G, A, F, P, Factory> =
+    CandidateComparisonError<R, CalculationFromInputErrorFor<G, A, F, P, Factory>>;
+
+pub type CandidateComparisonFromInputResult<R, G, A, F, P, Factory, C> = Result<
+    CalculationComparisonOutput<F, C>,
+    CandidateComparisonFromInputError<R, G, A, F, P, Factory>,
+>;
 
 pub struct CalculationComparisonRunner<C> {
     comparator: C,
@@ -92,13 +106,14 @@ impl<C> CalculationComparisonRunner<C> {
         ))
     }
 
-    pub fn calculate_baseline_from_input<G, A, F, P, Factory>(
+    pub fn calculate_baseline_from_input<R, G, A, F, P, Factory>(
         &self,
+        revision: R,
         calculator: &EffectCalculator<A, F, P>,
         baseline_effects: &ActiveEffectCollection<'_, G>,
         factory: &Factory,
         input: &Factory::Input,
-    ) -> CalculationBaselineFromInputResult<G, A, F, P, Factory>
+    ) -> CalculationBaselineFromInputResult<R, G, A, F, P, Factory>
     where
         G: Game,
         A: EffectApplier<G>,
@@ -108,18 +123,20 @@ impl<C> CalculationComparisonRunner<C> {
     {
         let output = calculator.calculate_from_input(baseline_effects, factory, input)?;
 
-        Ok(CalculationBaseline::new(output))
+        Ok(CalculationBaseline::new(revision, output))
     }
 
-    pub fn compare_candidate_from_input<G, A, F, P, Factory>(
+    pub fn compare_candidate_from_input<R, G, A, F, P, Factory>(
         &self,
         calculator: &EffectCalculator<A, F, P>,
-        baseline: &CalculationBaseline<F::Output>,
+        baseline: &CalculationBaselineOutput<R, F>,
+        current_revision: &R,
         candidate_effects: &ActiveEffectCollection<'_, G>,
         factory: &Factory,
         input: &Factory::Input,
-    ) -> CandidateComparisonFromInputResult<G, A, F, P, Factory, C>
+    ) -> CandidateComparisonFromInputResult<R, G, A, F, P, Factory, C>
     where
+        R: Clone + PartialEq,
         G: Game,
         A: EffectApplier<G>,
         F: EffectAccumulatorFinalizer<Accumulator = A::Accumulator>,
@@ -128,7 +145,16 @@ impl<C> CalculationComparisonRunner<C> {
         Factory: EffectAccumulatorFactory<Accumulator = A::Accumulator>,
         C: CalculationOutputComparator<F::Output>,
     {
-        let candidate = calculator.calculate_from_input(candidate_effects, factory, input)?;
+        if baseline.revision() != current_revision {
+            return Err(CandidateComparisonError::StaleBaseline {
+                baseline_revision: baseline.revision().clone(),
+                current_revision: current_revision.clone(),
+            });
+        }
+
+        let candidate = calculator
+            .calculate_from_input(candidate_effects, factory, input)
+            .map_err(CandidateComparisonError::Calculation)?;
 
         Ok(CalculationComparison::between(
             baseline.output().clone(),
