@@ -1,3 +1,4 @@
+mod build_calculation_core;
 mod build_calculation_runner;
 mod build_effect_collector;
 mod calculation_baseline;
@@ -18,6 +19,7 @@ mod effect_selection_rejection;
 mod numeric_stat_difference;
 mod stat_value_difference;
 
+pub use build_calculation_runner::BuildCalculationRunner;
 pub use build_effect_collector::BuildEffectCollector;
 pub use calculation_baseline::CalculationBaseline;
 pub use calculation_comparison::CalculationComparison;
@@ -37,6 +39,7 @@ pub use effect_execution_plan::EffectExecutionPlan;
 pub use numeric_stat_difference::NumericStatDifference;
 pub use stat_value_difference::StatValueDifference;
 
+pub use build_calculation_core::BuildCalculationCore;
 pub use effect_execution_planner::{EffectExecutionPlanValidationError, EffectExecutionPlanner};
 
 pub use effect_planner::EffectPlanner;

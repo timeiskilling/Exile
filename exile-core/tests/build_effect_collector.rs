@@ -2,8 +2,9 @@ mod support;
 
 use exile_core::{
     effect::{
-        BuildEffectCollector, EffectCalculator, EffectCollection, EffectCollectionEvaluator,
-        ItemEffectCollectionError, ItemEffectCollector,
+        BuildCalculationCore, BuildCalculationRunner, BuildEffectCollector, EffectCalculator,
+        EffectCollection, EffectCollectionEvaluator, ItemEffectCollectionError,
+        ItemEffectCollector,
     },
     item::{ItemInstance, Validated},
 };
@@ -297,4 +298,194 @@ fn supports_build_without_items() {
     ));
 
     assert!(entries.next().is_none());
+}
+
+#[test]
+fn build_calculation_runner_calculates_complete_build() {
+    let definitions = TestModifierDefinitionProvider::new(vec![movement_speed_definition()]);
+
+    let resolver = TestModifierEffectResolver::default();
+
+    let build_collector = TestBuildEffectCollector::new(&definitions, &resolver);
+
+    let evaluator = EffectCollectionEvaluator::new(TestEffectConditionEvaluator);
+
+    let calculator = EffectCalculator::new(
+        TestEffectApplier,
+        TestEffectAccumulatorFinalizer,
+        test_effect_execution_planner(),
+    );
+
+    let runner = BuildCalculationRunner::new(build_collector, evaluator, calculator);
+
+    let build = build_with_three_movement_speed_items(&definitions);
+
+    let context = TestEffectContext {
+        enemy_current_life: 100,
+        enemy_maximum_life: 100,
+    };
+
+    let input = TestCalculationInput {
+        base_maximum_life: 100,
+    };
+
+    let stats = runner
+        .calculate_build(&build, &context, &TestEffectAccumulatorFactory, &input)
+        .expect("complete build calculation should succeed");
+
+    assert_eq!(stats.maximum_life, 100,);
+
+    assert_eq!(stats.increased_movement_speed_percent, 75,);
+
+    assert_eq!(stats.increased_damage_percent, 20,);
+
+    assert!(!stats.chaos_immune);
+}
+
+fn build_with_one_movement_speed_item(definitions: &TestModifierDefinitionProvider) -> TestBuild {
+    TestBuild::new(
+        vec![validated_rolled_item(
+            definitions,
+            TestModifierKind::MovementSpeed,
+            20,
+        )],
+        Vec::new(),
+    )
+}
+
+#[test]
+fn build_calculation_core_calculates_current_build_and_stores_output() {
+    let definitions = TestModifierDefinitionProvider::new(vec![movement_speed_definition()]);
+
+    let resolver = TestModifierEffectResolver::default();
+
+    let build_collector = TestBuildEffectCollector::new(&definitions, &resolver);
+
+    let evaluator = EffectCollectionEvaluator::new(TestEffectConditionEvaluator);
+
+    let calculator = EffectCalculator::new(
+        TestEffectApplier,
+        TestEffectAccumulatorFinalizer,
+        test_effect_execution_planner(),
+    );
+
+    let runner = BuildCalculationRunner::new(build_collector, evaluator, calculator);
+
+    let build = build_with_three_movement_speed_items(&definitions);
+
+    let context = TestEffectContext {
+        enemy_current_life: 100,
+        enemy_maximum_life: 100,
+    };
+
+    let input = TestCalculationInput {
+        base_maximum_life: 100,
+    };
+
+    let mut core = BuildCalculationCore::<TestGame, _, _, _, _, _, _>::new(
+        build,
+        context,
+        input,
+        TestEffectAccumulatorFactory,
+        runner,
+    );
+
+    assert!(core.current_output().is_none());
+
+    {
+        let output = core
+            .calculate_current()
+            .expect("current build calculation should succeed");
+
+        assert_eq!(output.maximum_life, 100,);
+
+        assert_eq!(output.increased_movement_speed_percent, 75,);
+
+        assert_eq!(output.increased_damage_percent, 20,);
+
+        assert!(!output.chaos_immune);
+    }
+
+    let stored_output = core
+        .current_output()
+        .expect("calculated output should be stored");
+
+    assert_eq!(stored_output.increased_movement_speed_percent, 75,);
+
+    assert_eq!(stored_output.increased_damage_percent, 20,);
+}
+
+#[test]
+fn build_calculation_core_invalidates_output_after_build_replacement() {
+    let definitions = TestModifierDefinitionProvider::new(vec![movement_speed_definition()]);
+
+    let resolver = TestModifierEffectResolver::default();
+
+    let build_collector = TestBuildEffectCollector::new(&definitions, &resolver);
+
+    let evaluator = EffectCollectionEvaluator::new(TestEffectConditionEvaluator);
+
+    let calculator = EffectCalculator::new(
+        TestEffectApplier,
+        TestEffectAccumulatorFinalizer,
+        test_effect_execution_planner(),
+    );
+
+    let runner = BuildCalculationRunner::new(build_collector, evaluator, calculator);
+
+    let initial_build = build_with_three_movement_speed_items(&definitions);
+
+    let context = TestEffectContext {
+        enemy_current_life: 100,
+        enemy_maximum_life: 100,
+    };
+
+    let input = TestCalculationInput {
+        base_maximum_life: 100,
+    };
+
+    let mut core = BuildCalculationCore::<TestGame, _, _, _, _, _, _>::new(
+        initial_build,
+        context,
+        input,
+        TestEffectAccumulatorFactory,
+        runner,
+    );
+
+    {
+        let initial_output = core
+            .calculate_current()
+            .expect("initial build calculation should succeed");
+
+        assert_eq!(initial_output.increased_movement_speed_percent, 75,);
+
+        assert_eq!(initial_output.increased_damage_percent, 20,);
+    }
+
+    assert!(core.current_output().is_some());
+
+    let replacement_build = build_with_one_movement_speed_item(&definitions);
+
+    core.replace_build(replacement_build)
+        .expect("build replacement should succeed");
+
+    assert!(core.current_output().is_none());
+
+    {
+        let updated_output = core
+            .calculate_current()
+            .expect("replacement build calculation should succeed");
+
+        assert_eq!(updated_output.increased_movement_speed_percent, 20,);
+
+        assert_eq!(updated_output.increased_damage_percent, 0,);
+
+        assert_eq!(updated_output.maximum_life, 100,);
+    }
+
+    let stored_output = core
+        .current_output()
+        .expect("replacement output should be stored");
+
+    assert_eq!(stored_output.increased_movement_speed_percent, 20,);
 }
