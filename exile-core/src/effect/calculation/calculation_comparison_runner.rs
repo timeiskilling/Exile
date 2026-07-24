@@ -162,4 +162,17 @@ impl<C> CalculationComparisonRunner<C> {
             &self.comparator,
         ))
     }
+
+    pub fn compare_outputs<O>(
+        &self,
+        baseline: O,
+        candidate: O,
+    ) -> CalculationComparison<O, C::Difference>
+    where
+        C: CalculationOutputComparator<O>,
+    {
+        let difference = self.comparator.compare(&baseline, &candidate);
+
+        CalculationComparison::new(baseline, candidate, difference)
+    }
 }

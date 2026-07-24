@@ -2,9 +2,9 @@ use std::{marker::PhantomData, mem};
 
 use crate::{
     effect::{
-        BuildCalculationRunner, BuildEffectCollector, CalculationBaseline,
-        EffectAccumulatorFactory, EffectAccumulatorFinalizer, EffectApplier,
-        EffectConditionEvaluator, EffectPlanner,
+        BuildCalculationRunner, BuildEffectCollector, CalculationBaseline, CalculationComparison,
+        CalculationComparisonRunner, CalculationOutputComparator, EffectAccumulatorFactory,
+        EffectAccumulatorFinalizer, EffectApplier, EffectConditionEvaluator, EffectPlanner,
         calculation::build_calculation_runner::BuildCalculationErrorFor,
     },
     game::Game,
@@ -25,6 +25,29 @@ pub enum BuildCalculationCoreMutationError {
     GenerationOverflow,
 }
 
+#[derive(Debug)]
+pub enum BuildCandidateComparisonError<E> {
+    Current(E),
+    Candidate(E),
+}
+
+pub type BuildCandidateComparisonErrorFor<G, BC, E, A, F, P, Factory> =
+    BuildCandidateComparisonError<BuildCalculationCoreError<G, BC, E, A, F, P, Factory>>;
+
+pub type BuildCalculationCoreDifference<F, C> =
+    <C as CalculationOutputComparator<BuildCalculationCoreOutput<F>>>::Difference;
+
+pub type BuildCalculationCoreComparison<F, C> =
+    CalculationComparison<BuildCalculationCoreOutput<F>, BuildCalculationCoreDifference<F, C>>;
+
+pub type BuildCandidateComparisonResult<G, BC, E, A, F, P, Factory, C> = Result<
+    BuildCalculationCoreComparison<F, C>,
+    BuildCandidateComparisonErrorFor<G, BC, E, A, F, P, Factory>,
+>;
+
+pub type BuildCalculationCoreOperationResult<G, BC, E, A, F, P, Factory> =
+    Result<(), BuildCalculationCoreError<G, BC, E, A, F, P, Factory>>;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct CoreGeneration(u64);
 
@@ -34,7 +57,7 @@ impl CoreGeneration {
     }
 }
 
-pub struct BuildCalculationCore<G, BC, E, A, F, P, Factory>
+pub struct BuildCalculationCore<G, BC, E, A, F, P, Factory, C>
 where
     G: Game,
     BC: BuildEffectCollector<G>,
@@ -52,9 +75,10 @@ where
     generation: CoreGeneration,
     baseline: Option<CalculationBaseline<CoreGeneration, F::Output>>,
     marker: PhantomData<fn() -> G>,
+    comparison_runner: CalculationComparisonRunner<C>,
 }
 
-impl<G, BC, E, A, F, P, Factory> BuildCalculationCore<G, BC, E, A, F, P, Factory>
+impl<G, BC, E, A, F, P, Factory, C> BuildCalculationCore<G, BC, E, A, F, P, Factory, C>
 where
     G: Game,
     BC: BuildEffectCollector<G>,
@@ -63,6 +87,7 @@ where
     F: EffectAccumulatorFinalizer<Accumulator = A::Accumulator>,
     P: EffectPlanner<G>,
     Factory: EffectAccumulatorFactory<Accumulator = A::Accumulator>,
+    C: CalculationOutputComparator<F::Output>,
 {
     pub fn new(
         build: BC::Build,
@@ -70,6 +95,7 @@ where
         input: Factory::Input,
         factory: Factory,
         runner: BuildCalculationRunner<BC, E, A, F, P>,
+        comparison_runner: CalculationComparisonRunner<C>,
     ) -> Self {
         Self {
             build,
@@ -80,7 +106,46 @@ where
             generation: CoreGeneration(0),
             baseline: None,
             marker: PhantomData,
+            comparison_runner,
         }
+    }
+
+    fn ensure_baseline(
+        &mut self,
+    ) -> BuildCalculationCoreOperationResult<G, BC, E, A, F, P, Factory> {
+        if self.baseline.is_none() {
+            self.calculate_current()?;
+        }
+
+        Ok(())
+    }
+
+    pub fn compare_candidate_build(
+        &mut self,
+        candidate_build: &BC::Build,
+    ) -> BuildCandidateComparisonResult<G, BC, E, A, F, P, Factory, C>
+    where
+        F::Output: Clone,
+        C: CalculationOutputComparator<F::Output>,
+    {
+        self.ensure_baseline()
+            .map_err(BuildCandidateComparisonError::Current)?;
+
+        let candidate_output = self
+            .runner
+            .calculate_build(candidate_build, &self.context, &self.factory, &self.input)
+            .map_err(BuildCandidateComparisonError::Candidate)?;
+
+        let baseline_output = self
+            .baseline
+            .as_ref()
+            .expect("baseline exists after ensure_baseline")
+            .output()
+            .clone();
+
+        Ok(self
+            .comparison_runner
+            .compare_outputs(baseline_output, candidate_output))
     }
 
     pub fn build(&self) -> &BC::Build {
