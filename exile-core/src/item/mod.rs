@@ -1,19 +1,11 @@
-mod item_editor;
-mod item_instance;
-mod item_rule;
-mod item_text_parser;
-mod item_validator;
-mod modifier_definition_provider;
-mod modifier_text_parser;
-mod modifier_validator;
+mod definition;
+mod editing;
+mod model;
+mod parsing;
+mod validation;
 
-pub use item_editor::ItemEditor;
-pub use item_instance::{
-    ItemInstance, ItemValidationFailure, ModifierInstanceId, StoredModifier, Unvalidated, Validated,
-};
-pub use item_rule::ItemRule;
-pub use item_text_parser::ItemTextParser;
-pub use item_validator::ItemValidator;
-pub use modifier_definition_provider::ModifierDefinitionProvider;
-pub use modifier_text_parser::ModifierTextParser;
-pub use modifier_validator::ModifierValidator;
+pub use definition::*;
+pub use editing::*;
+pub use model::*;
+pub use parsing::*;
+pub use validation::*;

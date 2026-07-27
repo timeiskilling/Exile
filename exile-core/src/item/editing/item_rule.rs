@@ -1,6 +1,6 @@
 use crate::{
     game::Game,
-    item::item_instance::{ItemInstance, ModifierInstanceId, Unvalidated},
+    item::{ItemInstance, ModifierInstanceId, Unvalidated},
 };
 
 pub trait ItemRule<G>

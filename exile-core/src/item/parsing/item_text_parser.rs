@@ -1,6 +1,6 @@
 use crate::{
     game::Game,
-    item::item_instance::{ItemInstance, Unvalidated},
+    item::{ItemInstance, Unvalidated},
 };
 
 pub trait ItemTextParser<G>

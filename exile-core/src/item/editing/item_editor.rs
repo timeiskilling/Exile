@@ -2,10 +2,7 @@ use exile_error::{RemoveModifierError, ReplaceModifierError};
 
 use crate::{
     game::{Game, ModifierDefinitionIdentity},
-    item::{
-        item_instance::{ItemInstance, ModifierInstanceId, Unvalidated},
-        item_rule::ItemRule,
-    },
+    item::{ItemInstance, ItemRule, ModifierInstanceId, Unvalidated},
 };
 
 pub struct ItemEditor<R> {
@@ -13,6 +10,7 @@ pub struct ItemEditor<R> {
 }
 
 impl<R> ItemEditor<R> {
+    #[inline]
     pub fn new(rules: R) -> Self {
         Self { rules }
     }

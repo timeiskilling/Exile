@@ -2,10 +2,10 @@ use std::{marker::PhantomData, mem};
 
 use crate::{
     effect::{
-        BuildCalculationRunner, BuildEffectCollector, CalculationBaseline, CalculationComparison,
+        BuildCalculationErrorFor, BuildCalculationRunner, BuildCandidateFactory,
+        BuildEffectCollector, CalculationBaseline, CalculationComparison,
         CalculationComparisonRunner, CalculationOutputComparator, EffectAccumulatorFactory,
         EffectAccumulatorFinalizer, EffectApplier, EffectConditionEvaluator, EffectPlanner,
-        calculation::build_calculation_runner::BuildCalculationErrorFor,
     },
     game::Game,
 };
@@ -30,6 +30,23 @@ pub enum BuildCandidateComparisonError<E> {
     Current(E),
     Candidate(E),
 }
+
+#[derive(Debug)]
+pub enum BuildCandidatePreparationError<CreateError, CompareError> {
+    Create(CreateError),
+    Compare(CompareError),
+}
+
+pub type BuildCandidatePreparationErrorFor<G, BC, E, A, F, P, Factory, CF> =
+    BuildCandidatePreparationError<
+        <CF as BuildCandidateFactory<<BC as BuildEffectCollector<G>>::Build>>::Error,
+        BuildCandidateComparisonErrorFor<G, BC, E, A, F, P, Factory>,
+    >;
+
+pub type BuildCandidatePreparationResult<G, BC, E, A, F, P, Factory, C, CF> = Result<
+    BuildCalculationCoreComparison<F, C>,
+    BuildCandidatePreparationErrorFor<G, BC, E, A, F, P, Factory, CF>,
+>;
 
 pub type BuildCandidateComparisonErrorFor<G, BC, E, A, F, P, Factory> =
     BuildCandidateComparisonError<BuildCalculationCoreError<G, BC, E, A, F, P, Factory>>;
@@ -223,6 +240,24 @@ where
         self.invalidate_baseline(next_generation);
 
         Ok(previous)
+    }
+
+    pub fn compare_candidate_with<CF>(
+        &mut self,
+        candidate_factory: &CF,
+        candidate: &CF::Candidate,
+    ) -> BuildCandidatePreparationResult<G, BC, E, A, F, P, Factory, C, CF>
+    where
+        CF: BuildCandidateFactory<BC::Build>,
+        F::Output: Clone,
+        C: CalculationOutputComparator<F::Output>,
+    {
+        let candidate_build = candidate_factory
+            .create_candidate(&self.build, candidate)
+            .map_err(BuildCandidatePreparationError::Create)?;
+
+        self.compare_candidate_build(&candidate_build)
+            .map_err(BuildCandidatePreparationError::Compare)
     }
 
     fn next_generation(&self) -> Result<CoreGeneration, BuildCalculationCoreMutationError> {

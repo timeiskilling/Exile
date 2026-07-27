@@ -4,10 +4,10 @@ use std::{cell::Cell, rc::Rc};
 
 use exile_core::{
     effect::{
-        BuildCalculationCore, BuildCalculationRunner, BuildEffectCollector,
-        CalculationComparisonRunner, CalculationOutputComparator, EffectCalculator,
-        EffectCollection, EffectCollectionEvaluator, ItemEffectCollectionError,
-        ItemEffectCollector,
+        BuildCalculationCore, BuildCalculationRunner, BuildCandidateFactory,
+        BuildCandidatePreparationError, BuildEffectCollector, CalculationComparisonRunner,
+        CalculationOutputComparator, EffectCalculator, EffectCollection, EffectCollectionEvaluator,
+        ItemEffectCollectionError, ItemEffectCollector,
     },
     item::{ItemInstance, Validated},
 };
@@ -410,4 +410,409 @@ fn build_replacement_invalidates_and_recreates_baseline() {
     assert_eq!(updated_baseline.increased_movement_speed_percent, 20,);
 
     assert_eq!(updated_baseline.increased_damage_percent, 0,);
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum TestBuildCandidate {
+    MovementSpeed { roll: u16 },
+    Rejected,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum TestBuildCandidateCreationError {
+    Rejected,
+    RollOutOfRange { roll: u16 },
+}
+
+struct TestBuildCandidateFactory<'a> {
+    definitions: &'a TestModifierDefinitionProvider,
+}
+
+impl<'a> TestBuildCandidateFactory<'a> {
+    fn new(definitions: &'a TestModifierDefinitionProvider) -> Self {
+        Self { definitions }
+    }
+}
+
+impl BuildCandidateFactory<TestBuild> for TestBuildCandidateFactory<'_> {
+    type Candidate = TestBuildCandidate;
+    type Error = TestBuildCandidateCreationError;
+
+    fn create_candidate(
+        &self,
+        _current: &TestBuild,
+        candidate: &Self::Candidate,
+    ) -> Result<TestBuild, Self::Error> {
+        match candidate {
+            TestBuildCandidate::MovementSpeed { roll } => {
+                if !(20..=30).contains(roll) {
+                    return Err(TestBuildCandidateCreationError::RollOutOfRange { roll: *roll });
+                }
+
+                Ok(build_with_one_movement_speed_item(self.definitions, *roll))
+            }
+
+            TestBuildCandidate::Rejected => Err(TestBuildCandidateCreationError::Rejected),
+        }
+    }
+}
+
+#[test]
+fn compare_candidate_with_creates_and_compares_candidate_build() {
+    let definitions = TestModifierDefinitionProvider::new(vec![movement_speed_definition()]);
+
+    let resolver = TestModifierEffectResolver::default();
+
+    let build_collector = TestBuildEffectCollector::new(&definitions, &resolver);
+
+    let evaluator = EffectCollectionEvaluator::new(TestEffectConditionEvaluator);
+
+    let calculator = EffectCalculator::new(
+        TestEffectApplier,
+        TestEffectAccumulatorFinalizer,
+        test_effect_execution_planner(),
+    );
+
+    let runner = BuildCalculationRunner::new(build_collector, evaluator, calculator);
+
+    let comparison_runner = CalculationComparisonRunner::new(MovementSpeedComparator);
+
+    let current_build = build_with_three_movement_speed_items(&definitions);
+
+    let context = TestEffectContext {
+        enemy_current_life: 100,
+        enemy_maximum_life: 100,
+    };
+
+    let input = TestCalculationInput {
+        base_maximum_life: 100,
+    };
+
+    let mut core = BuildCalculationCore::<TestGame, _, _, _, _, _, _, _>::new(
+        current_build,
+        context,
+        input,
+        TestEffectAccumulatorFactory,
+        runner,
+        comparison_runner,
+    );
+
+    let candidate_factory = TestBuildCandidateFactory::new(&definitions);
+
+    let candidate = TestBuildCandidate::MovementSpeed { roll: 20 };
+
+    assert!(core.current_output().is_none());
+
+    let comparison = core
+        .compare_candidate_with(&candidate_factory, &candidate)
+        .expect("candidate preparation and comparison should succeed");
+
+    assert_eq!(comparison.baseline().increased_movement_speed_percent, 75,);
+
+    assert_eq!(comparison.baseline().increased_damage_percent, 20,);
+
+    assert_eq!(comparison.candidate().increased_movement_speed_percent, 20,);
+
+    assert_eq!(comparison.candidate().increased_damage_percent, 0,);
+
+    assert_eq!(*comparison.difference(), -55,);
+
+    let current_output = core
+        .current_output()
+        .expect("current baseline should be created");
+
+    assert_eq!(current_output.increased_movement_speed_percent, 75,);
+
+    assert_eq!(current_output.increased_damage_percent, 20,);
+}
+
+#[test]
+fn compare_candidate_with_reuses_cached_baseline() {
+    let definitions = TestModifierDefinitionProvider::new(vec![movement_speed_definition()]);
+
+    let resolver = TestModifierEffectResolver::default();
+
+    let collection_calls = Rc::new(Cell::new(0));
+
+    let build_collector = CountingBuildEffectCollector::new(
+        TestBuildEffectCollector::new(&definitions, &resolver),
+        Rc::clone(&collection_calls),
+    );
+
+    let evaluator = EffectCollectionEvaluator::new(TestEffectConditionEvaluator);
+
+    let calculator = EffectCalculator::new(
+        TestEffectApplier,
+        TestEffectAccumulatorFinalizer,
+        test_effect_execution_planner(),
+    );
+
+    let runner = BuildCalculationRunner::new(build_collector, evaluator, calculator);
+
+    let comparison_runner = CalculationComparisonRunner::new(MovementSpeedComparator);
+
+    let current_build = build_with_three_movement_speed_items(&definitions);
+
+    let context = TestEffectContext {
+        enemy_current_life: 100,
+        enemy_maximum_life: 100,
+    };
+
+    let input = TestCalculationInput {
+        base_maximum_life: 100,
+    };
+
+    let mut core = BuildCalculationCore::<TestGame, _, _, _, _, _, _, _>::new(
+        current_build,
+        context,
+        input,
+        TestEffectAccumulatorFactory,
+        runner,
+        comparison_runner,
+    );
+
+    let candidate_factory = TestBuildCandidateFactory::new(&definitions);
+
+    let first_candidate = TestBuildCandidate::MovementSpeed { roll: 20 };
+
+    let first_comparison = core
+        .compare_candidate_with(&candidate_factory, &first_candidate)
+        .expect("first candidate comparison should succeed");
+
+    assert_eq!(collection_calls.get(), 2,);
+
+    assert_eq!(*first_comparison.difference(), -55,);
+
+    let second_candidate = TestBuildCandidate::MovementSpeed { roll: 30 };
+
+    let second_comparison = core
+        .compare_candidate_with(&candidate_factory, &second_candidate)
+        .expect("second candidate comparison should succeed");
+
+    assert_eq!(collection_calls.get(), 3,);
+
+    assert_eq!(
+        second_comparison
+            .baseline()
+            .increased_movement_speed_percent,
+        75,
+    );
+
+    assert_eq!(
+        second_comparison
+            .candidate()
+            .increased_movement_speed_percent,
+        30,
+    );
+
+    assert_eq!(*second_comparison.difference(), -45,);
+
+    let current_output = core
+        .current_output()
+        .expect("current baseline should remain stored");
+
+    assert_eq!(current_output.increased_movement_speed_percent, 75,);
+}
+
+#[test]
+fn candidate_creation_error_does_not_start_calculation() {
+    let definitions = TestModifierDefinitionProvider::new(vec![movement_speed_definition()]);
+
+    let resolver = TestModifierEffectResolver::default();
+
+    let collection_calls = Rc::new(Cell::new(0));
+
+    let build_collector = CountingBuildEffectCollector::new(
+        TestBuildEffectCollector::new(&definitions, &resolver),
+        Rc::clone(&collection_calls),
+    );
+
+    let evaluator = EffectCollectionEvaluator::new(TestEffectConditionEvaluator);
+
+    let calculator = EffectCalculator::new(
+        TestEffectApplier,
+        TestEffectAccumulatorFinalizer,
+        test_effect_execution_planner(),
+    );
+
+    let runner = BuildCalculationRunner::new(build_collector, evaluator, calculator);
+
+    let comparison_runner = CalculationComparisonRunner::new(MovementSpeedComparator);
+
+    let current_build = build_with_three_movement_speed_items(&definitions);
+
+    let context = TestEffectContext {
+        enemy_current_life: 100,
+        enemy_maximum_life: 100,
+    };
+
+    let input = TestCalculationInput {
+        base_maximum_life: 100,
+    };
+
+    let mut core = BuildCalculationCore::<TestGame, _, _, _, _, _, _, _>::new(
+        current_build,
+        context,
+        input,
+        TestEffectAccumulatorFactory,
+        runner,
+        comparison_runner,
+    );
+
+    let candidate_factory = TestBuildCandidateFactory::new(&definitions);
+
+    let candidate = TestBuildCandidate::Rejected;
+
+    let result = core.compare_candidate_with(&candidate_factory, &candidate);
+
+    assert!(matches!(
+        result,
+        Err(BuildCandidatePreparationError::Create(
+            TestBuildCandidateCreationError::Rejected
+        ))
+    ));
+
+    assert_eq!(collection_calls.get(), 0,);
+
+    assert!(core.current_output().is_none());
+}
+
+#[test]
+fn candidate_roll_out_of_range_does_not_start_calculation() {
+    let definitions = TestModifierDefinitionProvider::new(vec![movement_speed_definition()]);
+
+    let resolver = TestModifierEffectResolver::default();
+
+    let collection_calls = Rc::new(Cell::new(0));
+
+    let build_collector = CountingBuildEffectCollector::new(
+        TestBuildEffectCollector::new(&definitions, &resolver),
+        Rc::clone(&collection_calls),
+    );
+
+    let evaluator = EffectCollectionEvaluator::new(TestEffectConditionEvaluator);
+
+    let calculator = EffectCalculator::new(
+        TestEffectApplier,
+        TestEffectAccumulatorFinalizer,
+        test_effect_execution_planner(),
+    );
+
+    let runner = BuildCalculationRunner::new(build_collector, evaluator, calculator);
+
+    let comparison_runner = CalculationComparisonRunner::new(MovementSpeedComparator);
+
+    let current_build = build_with_three_movement_speed_items(&definitions);
+
+    let context = TestEffectContext {
+        enemy_current_life: 100,
+        enemy_maximum_life: 100,
+    };
+
+    let input = TestCalculationInput {
+        base_maximum_life: 100,
+    };
+
+    let mut core = BuildCalculationCore::<TestGame, _, _, _, _, _, _, _>::new(
+        current_build,
+        context,
+        input,
+        TestEffectAccumulatorFactory,
+        runner,
+        comparison_runner,
+    );
+
+    let candidate_factory = TestBuildCandidateFactory::new(&definitions);
+
+    let candidate = TestBuildCandidate::MovementSpeed { roll: 31 };
+
+    let result = core.compare_candidate_with(&candidate_factory, &candidate);
+
+    assert!(matches!(
+        result,
+        Err(BuildCandidatePreparationError::Create(
+            TestBuildCandidateCreationError::RollOutOfRange { roll: 31 }
+        ))
+    ));
+
+    assert_eq!(collection_calls.get(), 0,);
+
+    assert!(core.current_output().is_none());
+}
+
+#[test]
+fn candidate_creation_error_preserves_existing_baseline() {
+    let definitions = TestModifierDefinitionProvider::new(vec![movement_speed_definition()]);
+
+    let resolver = TestModifierEffectResolver::default();
+
+    let collection_calls = Rc::new(Cell::new(0));
+
+    let build_collector = CountingBuildEffectCollector::new(
+        TestBuildEffectCollector::new(&definitions, &resolver),
+        Rc::clone(&collection_calls),
+    );
+
+    let evaluator = EffectCollectionEvaluator::new(TestEffectConditionEvaluator);
+
+    let calculator = EffectCalculator::new(
+        TestEffectApplier,
+        TestEffectAccumulatorFinalizer,
+        test_effect_execution_planner(),
+    );
+
+    let runner = BuildCalculationRunner::new(build_collector, evaluator, calculator);
+
+    let comparison_runner = CalculationComparisonRunner::new(MovementSpeedComparator);
+
+    let current_build = build_with_three_movement_speed_items(&definitions);
+
+    let context = TestEffectContext {
+        enemy_current_life: 100,
+        enemy_maximum_life: 100,
+    };
+
+    let input = TestCalculationInput {
+        base_maximum_life: 100,
+    };
+
+    let mut core = BuildCalculationCore::<TestGame, _, _, _, _, _, _, _>::new(
+        current_build,
+        context,
+        input,
+        TestEffectAccumulatorFactory,
+        runner,
+        comparison_runner,
+    );
+
+    let initial_output = *core
+        .calculate_current()
+        .expect("current calculation should succeed");
+
+    assert_eq!(collection_calls.get(), 1,);
+
+    assert_eq!(initial_output.increased_movement_speed_percent, 75,);
+
+    let candidate_factory = TestBuildCandidateFactory::new(&definitions);
+
+    let candidate = TestBuildCandidate::Rejected;
+
+    let result = core.compare_candidate_with(&candidate_factory, &candidate);
+
+    assert!(matches!(
+        result,
+        Err(BuildCandidatePreparationError::Create(
+            TestBuildCandidateCreationError::Rejected
+        ))
+    ));
+
+    assert_eq!(collection_calls.get(), 1,);
+
+    let stored_output = core
+        .current_output()
+        .expect("creation error must preserve baseline");
+
+    assert_eq!(stored_output.increased_movement_speed_percent, 75,);
+
+    assert_eq!(stored_output.increased_damage_percent, 20,);
 }

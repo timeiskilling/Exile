@@ -1,6 +1,6 @@
 use std::{fmt, marker::PhantomData};
 
-use crate::{game::Game, item::item_validator::ItemValidator};
+use crate::{game::Game, item::ItemValidator};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Unvalidated;
@@ -98,22 +98,27 @@ impl<G, ValidationState> ItemInstance<G, ValidationState>
 where
     G: Game,
 {
+    #[inline]
     pub fn base(&self) -> &G::ItemBase {
         &self.base
     }
 
+    #[inline]
     pub fn state(&self) -> &G::ItemState {
         &self.state
     }
 
+    #[inline]
     pub fn modifiers(&self) -> &[StoredModifier<G::ModifierDefinitionId, G::ModifierInstance>] {
         &self.modifiers
     }
 
+    #[inline]
     pub fn modifier(&self, id: ModifierInstanceId) -> Option<&G::ModifierInstance> {
         self.stored_modifier(id).map(StoredModifier::modifier)
     }
 
+    #[inline]
     pub fn stored_modifier(
         &self,
         id: ModifierInstanceId,
@@ -121,10 +126,12 @@ where
         self.modifiers.iter().find(|stored| stored.id == id)
     }
 
+    #[inline]
     pub fn revision(&self) -> u64 {
         self.revision
     }
 
+    #[inline]
     fn change_validation_state<NextValidationState>(self) -> ItemInstance<G, NextValidationState> {
         ItemInstance {
             base: self.base,
@@ -141,6 +148,7 @@ impl<G> ItemInstance<G, Unvalidated>
 where
     G: Game,
 {
+    #[inline]
     pub fn new(base: G::ItemBase, state: G::ItemState) -> Self {
         Self {
             base,
