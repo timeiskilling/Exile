@@ -1,8 +1,11 @@
+use std::{cell::Cell, rc::Rc};
+
 use exile_core::{
     effect::{
         BuildEffectCollector, EffectCollection, ItemEffectCollectionError, ItemEffectCollector,
         ModifierEffectResolver,
     },
+    game::Game,
     item::{ItemInstance, ModifierDefinitionProvider, Validated},
 };
 
@@ -70,5 +73,44 @@ impl BuildEffectCollector<TestGame> for TestBuildEffectCollector<'_> {
         effects.collect_from_sources(build.passive_nodes().iter());
 
         Ok(effects)
+    }
+}
+
+pub struct CountingBuildEffectCollector<BC> {
+    inner: BC,
+    calculation_count: Rc<Cell<usize>>,
+}
+
+impl<BC> CountingBuildEffectCollector<BC> {
+    pub fn new(inner: BC) -> (Self, Rc<Cell<usize>>) {
+        let calculation_count = Rc::new(Cell::new(0));
+
+        let collector = Self {
+            inner,
+            calculation_count: Rc::clone(&calculation_count),
+        };
+
+        (collector, calculation_count)
+    }
+}
+
+impl<G, BC> BuildEffectCollector<G> for CountingBuildEffectCollector<BC>
+where
+    G: Game,
+    BC: BuildEffectCollector<G>,
+{
+    type Build = BC::Build;
+    type Error = BC::Error;
+
+    fn collect_effects(&self, build: &Self::Build) -> Result<EffectCollection<G>, Self::Error> {
+        let next_count = self
+            .calculation_count
+            .get()
+            .checked_add(1)
+            .expect("build calculation count overflow");
+
+        self.calculation_count.set(next_count);
+
+        self.inner.collect_effects(build)
     }
 }

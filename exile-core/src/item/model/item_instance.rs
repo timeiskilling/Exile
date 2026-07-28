@@ -142,6 +142,16 @@ where
             validation_state: PhantomData,
         }
     }
+
+    pub(crate) fn mutate_with_revision<R>(&mut self, f: impl FnOnce(&mut Self) -> R) -> R {
+        let next_revision = self
+            .revision
+            .checked_add(1)
+            .expect("item revision overflow");
+        let result = f(self);
+        self.revision = next_revision;
+        result
+    }
 }
 
 impl<G> ItemInstance<G, Unvalidated>
@@ -236,13 +246,6 @@ where
 
     pub(crate) fn replace_state_unchecked(&mut self, state: G::ItemState) -> G::ItemState {
         std::mem::replace(&mut self.state, state)
-    }
-
-    pub(crate) fn increment_revision(&mut self) {
-        self.revision = self
-            .revision
-            .checked_add(1)
-            .expect("item revision overflow");
     }
 }
 

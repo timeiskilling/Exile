@@ -27,4 +27,18 @@ impl<A> EffectCollectionApplier<A> {
 
         Ok(())
     }
+
+    pub fn apply_all_owned<G>(
+        &self,
+        plan: &EffectExecutionPlan<'_, G>,
+        mut accumulator: <A as EffectApplier<G>>::Accumulator,
+    ) -> Result<<A as EffectApplier<G>>::Accumulator, <A as EffectApplier<G>>::Error>
+    where
+        G: Game,
+        A: EffectApplier<G>,
+    {
+        self.apply_all(plan, &mut accumulator)?;
+
+        Ok(accumulator)
+    }
 }

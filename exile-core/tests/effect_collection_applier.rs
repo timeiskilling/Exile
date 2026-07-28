@@ -2,7 +2,7 @@ mod support;
 
 use exile_core::effect::{
     EffectApplier, EffectCollection, EffectCollectionApplier, EffectCollectionEvaluator,
-    EffectEntry, EffectSource, calculation::EffectExecutionPlan,
+    EffectEntry, EffectExecutionPlanner, EffectPlanner, EffectSource,
 };
 
 use support::{
@@ -55,7 +55,10 @@ fn applies_all_active_effects_in_collection_order() {
 
     let collection_applier = EffectCollectionApplier::new(TestEffectApplier);
 
-    let plan = EffectExecutionPlan::build(&active, &TestEffectPlanningPolicy);
+    let planner = EffectExecutionPlanner::new(TestEffectPlanningPolicy);
+    let plan = planner
+        .plan(&active)
+        .expect("effect planning should succeed");
 
     collection_applier
         .apply_all(&plan, &mut accumulator)
@@ -88,7 +91,11 @@ fn does_not_apply_inactive_effects() {
     let mut accumulator = TestEffectAccumulator::default();
     let collection_applier = EffectCollectionApplier::new(TestEffectApplier);
 
-    let plan = EffectExecutionPlan::build(&active, &TestEffectPlanningPolicy);
+    let planner = EffectExecutionPlanner::new(TestEffectPlanningPolicy);
+    let plan = planner
+        .plan(&active)
+        .expect("effect planning should succeed");
+
     collection_applier
         .apply_all(&plan, &mut accumulator)
         .expect("all effects should be applied");
@@ -156,7 +163,10 @@ fn stops_on_first_error_and_keeps_previous_changes() {
 
     let collection_applier = EffectCollectionApplier::new(FailingEffectApplier);
 
-    let plan = EffectExecutionPlan::build(&active, &TestEffectPlanningPolicy);
+    let planner = EffectExecutionPlanner::new(TestEffectPlanningPolicy);
+    let plan = planner
+        .plan(&active)
+        .expect("effect planning should succeed");
 
     let result = collection_applier.apply_all(&plan, &mut accumulator);
 

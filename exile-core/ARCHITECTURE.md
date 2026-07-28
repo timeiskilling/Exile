@@ -1508,7 +1508,7 @@ impl EffectAccumulatorFinalizer for MyFinalizer {
 }
 ```
 
-The low-level calculation pipeline is now complete: a factory creates `MyAccumulator`, `MyEffectApplier` mutates it, and `MyFinalizer` produces `MyFinalStats`.
+The factory creates `MyAccumulator`, `MyEffectApplier` mutates it, and `MyFinalizer` produces `MyFinalStats`.
 
 ### Step 15: Define the build model
 

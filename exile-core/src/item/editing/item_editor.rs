@@ -30,9 +30,8 @@ impl<R> ItemEditor<R> {
 
         let definition_id = definition.modifier_definition_id();
 
-        let id = item.push_modifier_unchecked(definition_id, modifier);
-
-        item.increment_revision();
+        let id =
+            item.mutate_with_revision(|item| item.push_modifier_unchecked(definition_id, modifier));
 
         Ok(id)
     }
@@ -56,11 +55,10 @@ impl<R> ItemEditor<R> {
                 .map_err(RemoveModifierError::Validation)?;
         }
 
-        let removed = item
-            .remove_modifier_unchecked(id)
-            .expect("modifier existed before remove validation");
-
-        item.increment_revision();
+        let removed = item.mutate_with_revision(|item| {
+            item.remove_modifier_unchecked(id)
+                .expect("modifier existed before remove validation")
+        });
 
         Ok(removed)
     }
@@ -86,11 +84,10 @@ impl<R> ItemEditor<R> {
 
         let definition_id = definition.modifier_definition_id();
 
-        let previous = item
-            .replace_modifier_unchecked(id, definition_id, modifier)
-            .expect("modifier existed before replace validation");
-
-        item.increment_revision();
+        let previous = item.mutate_with_revision(|item| {
+            item.replace_modifier_unchecked(id, definition_id, modifier)
+                .expect("modifier existed before replace validation")
+        });
 
         Ok(previous)
     }
@@ -106,9 +103,8 @@ impl<R> ItemEditor<R> {
     {
         self.rules.validate_replace_state(item, &new_state)?;
 
-        let previous_state = item.replace_state_unchecked(new_state);
-
-        item.increment_revision();
+        let previous_state =
+            item.mutate_with_revision(|item| item.replace_state_unchecked(new_state));
 
         Ok(previous_state)
     }

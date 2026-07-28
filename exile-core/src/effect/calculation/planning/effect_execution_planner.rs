@@ -121,10 +121,20 @@ where
 {
     let (entries, mut selection_rejections) = plan.into_parts();
 
-    let mut winners = HashMap::<P::SelectionKey, usize>::new();
+    let selection_keys = entries
+        .iter()
+        .map(|entry| policy.selection_key(entry.effect()))
+        .collect::<Vec<_>>();
 
-    for (index, entry) in entries.iter().copied().enumerate() {
-        let Some(key) = policy.selection_key(entry.effect()) else {
+    let mut winners = HashMap::<&P::SelectionKey, usize>::new();
+
+    for (index, (entry, selection_key)) in entries
+        .iter()
+        .copied()
+        .zip(selection_keys.iter())
+        .enumerate()
+    {
+        let Some(key) = selection_key.as_ref() else {
             continue;
         };
 
@@ -135,6 +145,7 @@ where
 
             Entry::Occupied(mut occupied) => {
                 let winner_index = *occupied.get();
+
                 let winner_entry = entries[winner_index];
 
                 if policy.prefers(entry.effect(), winner_entry.effect()) {
@@ -146,14 +157,19 @@ where
 
     let mut selected_entries = Vec::with_capacity(entries.len());
 
-    for (index, entry) in entries.iter().copied().enumerate() {
-        let Some(key) = policy.selection_key(entry.effect()) else {
+    for (index, (entry, selection_key)) in entries
+        .iter()
+        .copied()
+        .zip(selection_keys.iter())
+        .enumerate()
+    {
+        let Some(key) = selection_key.as_ref() else {
             selected_entries.push(entry);
             continue;
         };
 
         let winner_index = *winners
-            .get(&key)
+            .get(key)
             .expect("selection group must have a winner");
 
         let winner_entry = entries[winner_index];

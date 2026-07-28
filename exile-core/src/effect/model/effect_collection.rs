@@ -7,7 +7,7 @@ use crate::{
     item::{ItemInstance, ModifierDefinitionProvider, Validated},
 };
 
-type ItemEffectCollectionResult<P, R, G> = Result<
+pub type ItemEffectCollectionResult<G, P, R> = Result<
     (),
     ItemEffectCollectionError<
         <P as ModifierDefinitionProvider<G>>::Error,
@@ -97,7 +97,7 @@ where
         &mut self,
         collector: &ItemEffectCollector<'_, P, R>,
         item: &ItemInstance<G, Validated>,
-    ) -> ItemEffectCollectionResult<P, R, G>
+    ) -> ItemEffectCollectionResult<G, P, R>
     where
         G::ModifierDefinitionId: Clone,
         P: ModifierDefinitionProvider<G>,
@@ -114,7 +114,7 @@ where
         &mut self,
         collector: &ItemEffectCollector<'_, P, R>,
         items: I,
-    ) -> ItemEffectCollectionResult<P, R, G>
+    ) -> ItemEffectCollectionResult<G, P, R>
     where
         G: 'a,
         G::ModifierDefinitionId: Clone,

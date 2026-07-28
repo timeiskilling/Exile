@@ -17,7 +17,7 @@ impl<'a, G> EffectExecutionPlan<'a, G>
 where
     G: Game,
 {
-    pub fn build<P>(effects: &ActiveEffectCollection<'a, G>, policy: &P) -> Self
+    pub(crate) fn build<P>(effects: &ActiveEffectCollection<'a, G>, policy: &P) -> Self
     where
         P: EffectPlanningPolicy<G>,
     {

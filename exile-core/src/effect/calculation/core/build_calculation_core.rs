@@ -25,13 +25,13 @@ pub enum BuildCalculationCoreMutationError {
     GenerationOverflow,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum BuildCandidateComparisonError<E> {
     Current(E),
     Candidate(E),
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum BuildCandidatePreparationError<CreateError, CompareError> {
     Create(CreateError),
     Compare(CompareError),
@@ -62,7 +62,7 @@ pub type BuildCandidateComparisonResult<G, BC, E, A, F, P, Factory, C> = Result<
     BuildCandidateComparisonErrorFor<G, BC, E, A, F, P, Factory>,
 >;
 
-pub type BuildCalculationCoreOperationResult<G, BC, E, A, F, P, Factory> =
+type BuildCalculationCoreOperationResult<G, BC, E, A, F, P, Factory> =
     Result<(), BuildCalculationCoreError<G, BC, E, A, F, P, Factory>>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -143,7 +143,6 @@ where
     ) -> BuildCandidateComparisonResult<G, BC, E, A, F, P, Factory, C>
     where
         F::Output: Clone,
-        C: CalculationOutputComparator<F::Output>,
     {
         self.ensure_baseline()
             .map_err(BuildCandidateComparisonError::Current)?;
@@ -250,7 +249,6 @@ where
     where
         CF: BuildCandidateFactory<BC::Build>,
         F::Output: Clone,
-        C: CalculationOutputComparator<F::Output>,
     {
         let candidate_build = candidate_factory
             .create_candidate(&self.build, candidate)

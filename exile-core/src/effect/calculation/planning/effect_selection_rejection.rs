@@ -12,7 +12,10 @@ impl<'a, G> EffectSelectionRejection<'a, G>
 where
     G: Game,
 {
-    pub fn new(rejected: &'a SourcedEffectEntry<G>, winner: &'a SourcedEffectEntry<G>) -> Self {
+    pub(crate) fn new(
+        rejected: &'a SourcedEffectEntry<G>,
+        winner: &'a SourcedEffectEntry<G>,
+    ) -> Self {
         Self { rejected, winner }
     }
 

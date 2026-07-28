@@ -1,8 +1,8 @@
 mod support;
 
 use exile_core::effect::{
-    EffectCollection, EffectCollectionEvaluator, EffectEntry, EffectOrigin, EffectSource,
-    calculation::EffectExecutionPlan,
+    EffectCollection, EffectCollectionEvaluator, EffectEntry, EffectExecutionPlanner, EffectOrigin,
+    EffectPlanner, EffectSource,
 };
 
 use support::{
@@ -46,7 +46,10 @@ fn orders_active_effects_by_phase_and_priority() {
         .collect_active(&collection, &context)
         .expect("condition evaluation should succeed");
 
-    let plan = EffectExecutionPlan::build(&active, &TestEffectPlanningPolicy);
+    let planner = EffectExecutionPlanner::new(TestEffectPlanningPolicy);
+    let plan = planner
+        .plan(&active)
+        .expect("effect planning should succeed");
     let effects = plan.effects().collect::<Vec<_>>();
 
     assert_eq!(effects.len(), 6);
@@ -87,7 +90,10 @@ fn execution_plan_preserves_effect_origins() {
         .collect_active(&collection, &context)
         .expect("condition evaluation should succeed");
 
-    let plan = EffectExecutionPlan::build(&active, &TestEffectPlanningPolicy);
+    let planner = EffectExecutionPlanner::new(TestEffectPlanningPolicy);
+    let plan = planner
+        .plan(&active)
+        .expect("effect planning should succeed");
 
     for entry in &plan {
         assert!(matches!(

@@ -4,7 +4,7 @@ use crate::{
     item::{ItemInstance, ModifierDefinitionProvider, Validated},
 };
 
-type Result<G, P, R> = std::result::Result<
+pub type ItemEffectCollectorResult<G, P, R> = Result<
     Vec<SourcedEffectEntry<G>>,
     ItemEffectCollectionError<
         <P as ModifierDefinitionProvider<G>>::Error,
@@ -31,7 +31,10 @@ impl<'a, P, R> ItemEffectCollector<'a, P, R> {
         }
     }
 
-    pub fn collect<G>(&self, item: &ItemInstance<G, Validated>) -> Result<G, P, R>
+    pub fn collect<G>(
+        &self,
+        item: &ItemInstance<G, Validated>,
+    ) -> ItemEffectCollectorResult<G, P, R>
     where
         G: Game,
         G::ModifierDefinitionId: Clone,
