@@ -3,9 +3,9 @@ use std::convert::Infallible;
 
 use exile_core::effect::{
     CalculationOutputComparator, EffectAccumulatorFactory, EffectAccumulatorFinalizer,
-    EffectApplier, EffectConditionEvaluator, EffectEntry, EffectSource, ModifierEffectResolver,
-    NumericStatDifference, PassiveNodeProvider, StatValueDifference,
-    calculation::{EffectExecutionPlanner, EffectPlanningPolicy},
+    EffectApplier, EffectConditionEvaluator, EffectEntry, EffectExecutionPlanner,
+    EffectPlanningPolicy, EffectSource, ModifierEffectResolver, NumericStatDifference,
+    PassiveNodeProvider, StatValueDifference,
 };
 
 use crate::support::{TestEffectSourceId, TestPassiveNodeId};

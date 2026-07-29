@@ -8,7 +8,7 @@ pub struct CalculationComparison<O, D> {
 }
 
 impl<O, D> CalculationComparison<O, D> {
-    pub fn new(baseline: O, candidate: O, difference: D) -> Self {
+    pub(crate) fn new(baseline: O, candidate: O, difference: D) -> Self {
         Self {
             baseline,
             candidate,
@@ -41,4 +41,3 @@ impl<O, D> CalculationComparison<O, D> {
         (self.baseline, self.candidate, self.difference)
     }
 }
-

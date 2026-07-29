@@ -1,4 +1,30 @@
-# `exile-core` Library Architecture & Usage Guide
+# `exile-core`: Architecture, Semantics, and Usage Guide
+
+## Table of Contents
+
+1. [High-Level Architecture & Core Flow](#section-1)
+2. [The `Game`](#section-2)
+3. [Item Model, Editing, Parsing, and Validation](#section-3)
+4. [Effect Model and Provenance](#section-4)
+5. [Effect Sources and Item Effect Resolution](#section-5)
+6. [Conditional Effect Evaluation](#section-6)
+7. [Planning and Execution Order](#section-7)
+8. [Accumulator Creation, Effect Application, and Finalization](#section-8)
+9. [`EffectCalculator` and Detailed Calculation Output](#section-9)
+10. [Build-Level Calculation](#section-10)
+11. [Stateful Calculation with `BuildCalculationCore`](#section-11)
+12. [Candidate Build Construction and Comparison](#section-12)
+13. [Output Comparison](#section-13)
+14. [Error Boundaries and Failure Semantics](#section-14)
+15. [Ownership, Lifetimes, and Dispatch](#section-15)
+16. [Required and Optional Integrations](#section-16)
+17. [Step-by-Step Usage Guide](#section-17)
+18. [Module Organization and Public API](#section-18)
+19. [Known Design Questions and Open Issues](#section-19)
+
+---
+
+<a id="section-1"></a>
 
 ## 1. High-Level Architecture & Core Flow
 
@@ -28,6 +54,9 @@ At the build level, this process is wrapped by `BuildCalculationRunner`. Statefu
 The crate therefore has three distinct architectural layers. The item layer represents and validates domain state. The effect layer converts domain state into sourced and conditionally active effects. The calculation layer orders those effects, applies them to an accumulator, finalizes the output, caches the current result, and compares candidate builds.
 
 ---
+
+
+<a id="section-2"></a>
 
 ## 2. The `Game`
 
@@ -86,6 +115,8 @@ impl Game for MyGame {
 `Game` should remain a type-level contract. Runtime services such as databases, caches, parsers, providers, collectors, or network clients belong in their own structs and traits rather than inside the `Game` type.
 
 ---
+
+<a id="section-3"></a>
 
 ## 3. Item Model, Editing, Parsing, and Validation
 
@@ -209,6 +240,8 @@ External Text
 
 ---
 
+<a id="section-4"></a>
+
 ## 4. Effect Model and Provenance
 
 ### `EffectEntry`
@@ -284,6 +317,8 @@ Collection from multiple items is also atomic. `collect_from_items` accumulates 
 
 ---
 
+<a id="section-5"></a>
+
 ## 5. Effect Sources and Item Effect Resolution
 
 ### `EffectSource`
@@ -358,6 +393,8 @@ The collector distinguishes provider failures from resolver failures through `It
 
 ---
 
+<a id="section-6"></a>
+
 ## 6. Conditional Effect Evaluation
 
 `EffectConditionEvaluator<G>` defines the context type and the game-specific logic for evaluating one effect condition.
@@ -393,6 +430,8 @@ let active_effects =
 The type provides iteration over complete sourced entries, effects only, or origins only. The constructor is crate-private, which keeps active collections on trusted evaluation paths.
 
 ---
+
+<a id="section-7"></a>
 
 ## 7. Planning and Execution Order
 
@@ -454,7 +493,7 @@ where
 
 Phase and priority define deterministic execution order. Conflict keys identify effects that are not allowed to coexist. Selection keys identify groups where only one effect should survive. `prefers` decides whether a new candidate should replace the current winner in a selection group.
 
-Policy methods are expected to behave deterministically for the same effect and policy state. The generic planner may query the same selection key more than once during planning.
+`EffectPlanningPolicy` methods are expected to behave deterministically for the same effect and policy state. The generic planner computes `selection_key` once for each active entry, stores the result for the duration of planning, and reuses that stored key during both winner selection and rejection construction. This avoids repeated game-specific classification and guarantees that both passes observe the same selection group for an entry.
 
 ### `EffectExecutionPlanner`
 
@@ -470,9 +509,11 @@ Winner selection is performed in two passes. The planner first determines the fi
 
 `EffectExecutionPlan<'a, G>` contains ordered selected entries and selection-rejection metadata. It provides iteration over sourced entries and effects, as well as access to rejection records and their count.
 
-Although `EffectExecutionPlan::build` creates an ordered plan, the normal complete planning path is `EffectPlanner::plan`, because the planner also validates conflicts and performs winner selection.
+Plan construction is internal to the crate. External callers obtain a plan through `EffectPlanner::plan`, which preserves the complete planning contract: deterministic ordering, conflict validation, winner selection, and rejection recording. The constructors used to assemble a plan directly are crate-private so an arbitrary ordered list cannot be presented as a fully validated execution plan.
 
 ---
+
+<a id="section-8"></a>
 
 ## 8. Accumulator Creation, Effect Application, and Finalization
 
@@ -517,18 +558,36 @@ where
 
 The applier owns the concrete arithmetic semantics of the game. Planning determines which effects are executed and in what order; the applier performs the actual mutation.
 
+An individual `apply_effect` implementation should commit atomically when one effect requires several checked operations. Temporary values should be computed first, and accumulator fields should be updated only after all operations for that effect succeed.
+
 ### `EffectCollectionApplier`
 
-`EffectCollectionApplier<A>` owns a concrete effect applier and applies every effect in an `EffectExecutionPlan`.
+`EffectCollectionApplier<A>` applies every effect in an `EffectExecutionPlan`. It trusts the plan, preserves its order, and stops on the first application error.
+
+`apply_all` is the low-level in-place path. It receives `&mut Accumulator`, so the caller retains ownership and can observe mutations committed before a later effect fails. The method does not provide rollback.
 
 ```rust
-for effect in plan.effects() {
-    self.effect_applier
-        .apply_effect(effect, accumulator)?;
-}
+collection_applier.apply_all(
+    &plan,
+    &mut accumulator,
+)?;
 ```
 
-The collection applier does not reorder effects or resolve conflicts. It trusts the execution plan and stops on the first application error.
+`apply_all_owned` receives the accumulator by value and returns it only after every effect succeeds.
+
+```rust
+let accumulator = collection_applier
+    .apply_all_owned(
+        &plan,
+        accumulator,
+    )?;
+```
+
+On failure, the owned accumulator is dropped inside the method. Earlier mutations are not reversed, but the partially applied value is not returned. This is an ownership boundary rather than a transaction boundary.
+
+The high-level calculator uses this owned path. Its complete ownership and error behavior is defined in [Section 9](#section-9). The unresolved API trade-off is tracked in [Section 19](#section-19).
+
+If an accumulator contains `Rc<RefCell<_>>`, `Arc<Mutex<_>>`, or another shared mutable handle, dropping the accumulator wrapper does not undo mutations visible through other owners. Integrations that require isolation should avoid externally shared mutable accumulator state or provide their own transaction strategy.
 
 ### `EffectAccumulatorFinalizer`
 
@@ -551,6 +610,8 @@ The finalizer may calculate derived values, apply final caps, enforce output inv
 
 ---
 
+<a id="section-9"></a>
+
 ## 9. `EffectCalculator` and Detailed Calculation Output
 
 `EffectCalculator<A, F, P>` combines an `EffectCollectionApplier<A>`, a finalizer, and a planner.
@@ -563,15 +624,9 @@ let calculator = EffectCalculator::new(
 );
 ```
 
-The calculator exposes four calculation paths.
+The calculator exposes four calculation paths. `calculate` accepts an active effect collection and an already created accumulator, then returns only the finalized output. `calculate_detailed` performs the same pipeline but returns `EffectCalculationOutput<'a, G, O>`, which owns the finalized output together with the execution plan that produced it.
 
-`calculate` accepts an active effect collection and an already created accumulator. It plans the effects, applies the plan, finalizes the accumulator, and returns only the finalized output.
-
-`calculate_from_input` first asks an `EffectAccumulatorFactory` to create the accumulator, then performs the same planning, application, and finalization sequence.
-
-`calculate_detailed` accepts an already created accumulator and returns `EffectCalculationOutput<'a, G, O>`, which contains both the finalized output and the execution plan.
-
-`calculate_from_input_detailed` creates the accumulator from input and also returns the detailed output.
+`calculate_from_input` and `calculate_from_input_detailed` first ask an `EffectAccumulatorFactory` to create the accumulator, then delegate to the same calculation pipeline.
 
 ```rust
 let output = calculator.calculate_from_input(
@@ -586,6 +641,18 @@ let detailed = calculator.calculate_from_input_detailed(
     &input,
 )?;
 ```
+
+The non-detailed methods are thin wrappers over the detailed methods. They consume `EffectCalculationOutput` with `into_output`, return the finalized output, and discard the execution plan. Planning, application, and finalization therefore have one canonical implementation.
+
+### Accumulator ownership
+
+`calculate` and `calculate_detailed` take the accumulator by value. Passing a non-`Copy` accumulator transfers ownership permanently into that calculation call.
+
+A planning error drops the accumulator before application. An application error follows the owned behavior described in [Section 8](#section-8): the accumulator may contain earlier successful mutations, but it is dropped rather than returned. A finalization error occurs after ownership has moved into the finalizer.
+
+This contract provides consumption, not rollback. A failed calculation returns only its stage-specific error and never returns the accumulator. The possible introduction of a recoverable alternative is discussed in [Section 19](#section-19).
+
+### Calculation errors
 
 The standard calculation error distinguishes planning, application, and finalization failures. The input-based error adds accumulator creation as a separate stage.
 
@@ -613,9 +680,17 @@ pub enum EffectCalculationFromInputError<
 }
 ```
 
-Because detailed output owns the execution plan, it borrows the sourced effects through the plan lifetime. Calling `into_output` discards the plan and returns the owned finalized output.
+The conversion from `EffectCalculationError` to `EffectCalculationFromInputError` preserves the `Plan`, `Apply`, and `Finalize` variants. `CreateAccumulator` can only originate before the owned calculation pipeline begins.
+
+### Detailed output lifetime
+
+Because detailed output owns an execution plan that contains references to sourced effects, `EffectCalculationOutput<'a, G, O>` remains tied to the lifetime of the source `EffectCollection`. Calling `into_output` discards the plan and returns the owned finalized output without that plan lifetime.
+
+`EffectCalculationOutput::new` is crate-private. External code can inspect or consume a detailed result, but it cannot manually combine an unrelated output and execution plan into a value that appears to represent one calculation.
 
 ---
+
+<a id="section-10"></a>
 
 ## 10. Build-Level Calculation
 
@@ -670,6 +745,8 @@ The runner exposes references to the build collector, evaluator, and calculator,
 
 ---
 
+<a id="section-11"></a>
+
 ## 11. Stateful Calculation with `BuildCalculationCore`
 
 `BuildCalculationCore<G, BC, E, A, F, P, Factory, C>` is the high-level stateful API. It owns the current build, condition context, calculation input, accumulator factory, build calculation runner, comparison runner, internal generation, and optional cached baseline.
@@ -721,6 +798,8 @@ if let Some(output) = core.current_output() {
 
 ---
 
+<a id="section-12"></a>
+
 ## 12. Candidate Build Construction and Comparison
 
 ### `BuildCandidateFactory`
@@ -770,6 +849,8 @@ Candidate construction happens before baseline creation. If candidate constructi
 
 ---
 
+<a id="section-13"></a>
+
 ## 13. Output Comparison
 
 ### `CalculationOutputComparator`
@@ -814,37 +895,63 @@ The revision-aware API reports `CandidateComparisonError::StaleBaseline` before 
 
 ### Numeric and value differences
 
-`NumericStatDifference` stores baseline, candidate, absolute difference, and an optional relative percentage. Relative percentage is `None` when the baseline is zero.
+`NumericStatDifference` stores the baseline, candidate, absolute difference, and an optional relative percentage. The absolute difference is calculated as `candidate - baseline`. A zero absolute result is normalized to positive `0.0`, so the stored value does not retain negative zero.
+
+Relative percentage is available only when the baseline, candidate, and absolute difference are finite and the baseline is not zero. A zero baseline, `NaN`, or either infinity produces `None` rather than `Some(NaN)` or an infinite percentage.
+
+`is_changed` compares the source values directly with `baseline != candidate`. Its behavior follows Rust `f64` and IEEE 754 comparison semantics.
+
+| Baseline | Candidate | `is_changed()` |
+|---:|---:|:---:|
+| `100.0` | `100.0` | `false` |
+| `100.0` | `125.0` | `true` |
+| `0.0` | `-0.0` | `false` |
+| `+∞` | `+∞` | `false` |
+| `NaN` | `NaN` | `true` |
+
+Positive and negative zero compare as equal. Equal positive infinities also compare as equal. `NaN` compares unequal to every value, including another `NaN`, so two `NaN` inputs are reported as changed. `is_positive` and `is_negative` inspect the absolute difference; both return `false` when that difference is `NaN`.
+
+The relative formula remains `absolute / baseline * 100.0`. For a negative finite baseline, the sign therefore follows the mathematical denominator rather than using `abs(baseline)`. A game that requires different domain semantics should implement its own difference type or comparator.
 
 `StatValueDifference<T>` stores baseline and candidate values without assuming numeric subtraction. When `T: PartialEq`, `is_changed` reports whether the values differ.
 
 ---
 
+<a id="section-14"></a>
+
 ## 14. Error Boundaries and Failure Semantics
 
 The library preserves stage-specific errors instead of flattening all failures into one opaque type.
 
-Item editing separates rule validation failures from missing-modifier failures for remove and replace operations. Item validation returns `ItemValidationFailure`, which preserves the rejected item. Item effect collection distinguishes definition-provider failures from modifier-resolution failures.
+Item editing separates rule validation failures from missing-modifier failures for remove and replace operations. Revision capacity is checked before a mutation is committed, so revision overflow does not leave an item changed without the corresponding revision update. Item validation returns `ItemValidationFailure`, which preserves the rejected item. Item effect collection distinguishes definition-provider failures from modifier-resolution failures.
 
 Effect calculation distinguishes planning, application, finalization, and optional accumulator-creation failures. Build calculation further separates build collection, condition evaluation, and calculation failures. Candidate workflows distinguish current-baseline failures, candidate failures, and candidate-construction failures.
 
-The current implementations also preserve several important commit boundaries. Item-editor validation occurs before mutation. Item effect collection builds a local result before extending the destination collection. Multi-item collection uses a temporary collection. Planning completes before effects are applied. A current calculation inserts a baseline only after a finalized output has been produced. Candidate calculation never replaces the baseline.
+Several operations use explicit commit boundaries. Item-editor validation occurs before mutation. Item effect collection builds a local result before extending the destination collection. Multi-item collection uses a temporary collection. Planning completes before application begins. A current calculation inserts a baseline only after a finalized output has been produced. Candidate calculation never replaces the baseline.
 
-These boundaries make failures easier to diagnose and prevent partially committed high-level state.
+Accumulator failure semantics are documented once at their corresponding abstraction levels. The low-level difference between borrowed and owned application is described in [Section 8](#section-8), while high-level calculator ownership is described in [Section 9](#section-9).
+
+These boundaries protect committed high-level state and make failures easier to diagnose. They do not imply that every low-level operation is transactional.
 
 ---
 
+<a id="section-15"></a>
+
 ## 15. Ownership, Lifetimes, and Dispatch
 
-The item model and raw effect collection own their data. `ActiveEffectCollection<'a, G>` borrows sourced entries from an `EffectCollection<G>`. `EffectExecutionPlan<'a, G>` and `EffectSelectionRejection<'a, G>` continue borrowing those same entries. `EffectCalculationOutput<'a, G, O>` therefore borrows the source effect collection through its execution plan while owning the finalized output.
+The item model and raw effect collection own their data. `ActiveEffectCollection<'a, G>` borrows sourced entries from an `EffectCollection<G>`. `EffectExecutionPlan<'a, G>` and `EffectSelectionRejection<'a, G>` continue borrowing those same entries. `EffectCalculationOutput<'a, G, O>` therefore owns the finalized output and the plan container while still borrowing the original sourced entries through that plan.
 
-The accumulator is owned by one calculation operation. `EffectAccumulatorFactory` creates it, `EffectApplier` mutates it through `&mut`, and `EffectAccumulatorFinalizer` consumes it.
+Accumulator ownership follows the contract in [Section 9](#section-9). Resource-management consequences for shared mutable accumulator state are covered in [Section 8](#section-8), so they are not repeated here.
+
+The effect model uses manual trait implementations where a derive would impose unnecessary bounds on the game marker type. For example, `EffectEntry<G>: Debug` depends on `G::Effect: Debug` and `G::EffectCondition: Debug`, not on `G: Debug`. `EffectOrigin<G>` follows the same principle for definition and source identifiers. A concrete `Game` marker does not need unrelated derives merely to use these wrappers.
 
 The calculation pipeline uses generic static dispatch. Types such as the collector, evaluator, planner, applier, finalizer, factory, and comparator are generic parameters. Rust knows their concrete implementations during compilation and monomorphizes the pipeline for those types.
 
 This model preserves precise associated-type relationships and allows the compiler to optimize direct calls. It also means that replacing one implementation with another changes the concrete type of the containing runner or core.
 
 ---
+
+<a id="section-16"></a>
 
 ## 16. Required and Optional Integrations
 
@@ -859,6 +966,8 @@ Build-level calculation requires `BuildEffectCollector`. Stateful current-build 
 `PassiveNodeProvider` is optional and is only needed when the concrete project has a passive-node lookup layer. Text parsers are optional when item data is constructed or deserialized through another interface. The stateful core is optional when the application only needs one-shot calculations.
 
 ---
+
+<a id="section-17"></a>
 
 ## 17. Step-by-Step Usage Guide
 
@@ -891,6 +1000,7 @@ use exile_core::{
         EffectCollectionEvaluator,
         EffectConditionEvaluator,
         EffectEntry,
+        EffectCalculator,
         EffectExecutionPlanner,
         EffectPlanningPolicy,
         ItemEffectCollectionError,
@@ -1002,7 +1112,7 @@ At this point the crate knows which types belong to `MyGame`, but it still does 
 
 ### Step 3: Create the modifier-definition provider
 
-`MyDefinitionProvider` owns the movement-speed definition. The value that later appears as `movement_speed_definition` will be borrowed from this provider rather than appearing as an variable.
+`MyDefinitionProvider` owns the movement-speed definition. The value that later appears as `movement_speed_definition` will be borrowed from this provider rather than appearing as an unexplained variable.
 
 ```rust
 pub struct MyDefinitionProvider {
@@ -1626,7 +1736,7 @@ fn create_runner<'a>(
         );
 
     let calculator =
-        exile_core::effect::EffectCalculator::new(
+        EffectCalculator::new(
             MyEffectApplier,
             MyFinalizer,
             planner,
@@ -1837,6 +1947,8 @@ fn main() {
 The current calculation begins with `100%` base movement speed and applies the `25%` modifier from the current boots, producing a cached baseline of `125%`. The candidate factory creates a new build containing boots with a `35%` modifier. Candidate calculation therefore produces `135%`, and `NumericStatDifference` reports an absolute improvement of `10`.
 ---
 
+<a id="section-18"></a>
+
 ## 18. Module Organization and Public API
 
 The crate root exposes the `effect`, `game`, and `item` modules.
@@ -1871,5 +1983,35 @@ use exile_core::{
     },
 };
 ```
+
+Public result aliases used by calculator, collector, build, and comparison methods are re-exported through the same facade. External code should not need paths such as `exile_core::effect::calculation::...` or `exile_core::item::model::...`.
+
+Some constructors are intentionally crate-private because they certify a relationship between values. `EffectExecutionPlan` must come from a planner. `EffectSelectionRejection` must be created while planner winners are known. `EffectCalculationOutput` must pair an output with the plan that produced it. `CalculationComparison` must pair two outputs with a difference produced by the comparator.
+
+External code uses the semantic public paths instead. It obtains execution plans from `EffectPlanner::plan`, detailed outputs from `EffectCalculator`, and comparisons from `CalculationComparison::between` or `CalculationComparisonRunner`.
+
+---
+
+<a id="section-19"></a>
+
+## 19. Known Design Questions and Open Issues
+
+### Recoverable calculation failure
+
+The current accumulator ownership contract is defined in [Section 9](#section-9), and the lower-level distinction between `apply_all` and `apply_all_owned` is defined in [Section 8](#section-8).
+
+An open issue should decide whether the consumption-only calculator API is sufficient or whether a separate recoverable path is required. Recovery may be useful when accumulator construction is expensive, when diagnostics need intermediate state, or when callers need to reset and reuse calculation resources.
+
+Possible alternatives include returning the accumulator inside an error, exposing a separate recoverable calculation method, or introducing snapshot-based rollback. Returning the value after an application failure would expose its partially mutated state unless an additional rollback mechanism were implemented. Requiring `Accumulator: Clone` would simplify snapshots but would impose a potentially expensive and unnecessary bound on every integration.
+
+Until that design is resolved, callers that require retries should retain the source input needed to construct a fresh accumulator.
+
+### Transactional effect application
+
+The current mutation model is intentionally non-transactional, as described in [Section 8](#section-8). A separate issue may evaluate whether transactional application belongs in `exile-core`, should be provided by game-specific accumulators, or should remain outside the library.
+
+### Floating-point comparison policy
+
+The current literal floating-point behavior is documented in [Section 13](#section-13). A future issue may consider whether the library should provide an optional approximate-comparison helper, but game-specific tolerance rules should not silently replace the existing exact semantics.
 
 ---

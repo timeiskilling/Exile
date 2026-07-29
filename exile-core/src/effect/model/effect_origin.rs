@@ -2,7 +2,6 @@ use std::fmt;
 
 use crate::{game::Game, item::ModifierInstanceId};
 
-#[derive(PartialEq, Eq)]
 pub enum EffectOrigin<G>
 where
     G: Game,
@@ -69,4 +68,49 @@ where
             Self::Source(source_id) => formatter.debug_tuple("Source").field(source_id).finish(),
         }
     }
+}
+
+impl<G> PartialEq for EffectOrigin<G>
+where
+    G: Game,
+    G::ModifierDefinitionId: PartialEq,
+    G::EffectSourceId: PartialEq,
+{
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (
+                Self::ItemModifier {
+                    modifier_instance_id: left_modifier_id,
+                    definition_id: left_definition_id,
+                },
+                Self::ItemModifier {
+                    modifier_instance_id: right_modifier_id,
+                    definition_id: right_definition_id,
+                },
+            ) => left_modifier_id == right_modifier_id && left_definition_id == right_definition_id,
+
+            (
+                Self::ModifierDefinition {
+                    definition_id: left_definition_id,
+                },
+                Self::ModifierDefinition {
+                    definition_id: right_definition_id,
+                },
+            ) => left_definition_id == right_definition_id,
+
+            (Self::Source(left_source_id), Self::Source(right_source_id)) => {
+                left_source_id == right_source_id
+            }
+
+            _ => false,
+        }
+    }
+}
+
+impl<G> Eq for EffectOrigin<G>
+where
+    G: Game,
+    G::ModifierDefinitionId: Eq,
+    G::EffectSourceId: Eq,
+{
 }

@@ -1,6 +1,7 @@
+use std::fmt;
+
 use crate::{effect::EffectConditionEvaluator, game::Game};
 
-#[derive(Debug, PartialEq)]
 pub struct EffectEntry<G>
 where
     G: Game,
@@ -48,5 +49,31 @@ where
 
     pub fn into_effect(self) -> G::Effect {
         self.effect
+    }
+}
+
+impl<G> fmt::Debug for EffectEntry<G>
+where
+    G: Game,
+    G::Effect: fmt::Debug,
+    G::EffectCondition: fmt::Debug,
+{
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("EffectEntry")
+            .field("effect", &self.effect)
+            .field("condition", &self.condition)
+            .finish()
+    }
+}
+
+impl<G> PartialEq for EffectEntry<G>
+where
+    G: Game,
+    G::Effect: PartialEq,
+    G::EffectCondition: PartialEq,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.effect == other.effect && self.condition == other.condition
     }
 }

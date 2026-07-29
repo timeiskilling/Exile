@@ -7,7 +7,7 @@ use crate::{
     game::Game,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CalculationComparisonError<E> {
     Baseline(E),
     Candidate(E),
@@ -171,8 +171,6 @@ impl<C> CalculationComparisonRunner<C> {
     where
         C: CalculationOutputComparator<O>,
     {
-        let difference = self.comparator.compare(&baseline, &candidate);
-
-        CalculationComparison::new(baseline, candidate, difference)
+        CalculationComparison::between(baseline, candidate, &self.comparator)
     }
 }

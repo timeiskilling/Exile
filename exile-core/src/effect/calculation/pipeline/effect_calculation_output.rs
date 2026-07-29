@@ -12,7 +12,7 @@ impl<'a, G, O> EffectCalculationOutput<'a, G, O>
 where
     G: Game,
 {
-    pub fn new(output: O, execution_plan: EffectExecutionPlan<'a, G>) -> Self {
+    pub(crate) fn new(output: O, execution_plan: EffectExecutionPlan<'a, G>) -> Self {
         Self {
             output,
             execution_plan,

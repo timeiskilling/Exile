@@ -125,12 +125,12 @@ impl<A, F, P> EffectCalculator<A, F, P> {
     pub fn calculate_detailed<'a, G>(
         &self,
         effects: &ActiveEffectCollection<'a, G>,
-        mut accumulator: <A as EffectApplier<G>>::Accumulator,
+        accumulator: <A as EffectApplier<G>>::Accumulator,
     ) -> EffectCalculationDetailedResult<'a, G, A, F, P>
     where
         G: Game,
         A: EffectApplier<G>,
-        F: EffectAccumulatorFinalizer<Accumulator = <A as EffectApplier<G>>::Accumulator>,
+        F: EffectAccumulatorFinalizer<Accumulator = A::Accumulator>,
         P: EffectPlanner<G>,
     {
         let plan = self
@@ -138,8 +138,9 @@ impl<A, F, P> EffectCalculator<A, F, P> {
             .plan(effects)
             .map_err(EffectCalculationError::Plan)?;
 
-        self.collection_applier
-            .apply_all(&plan, &mut accumulator)
+        let accumulator = self
+            .collection_applier
+            .apply_all_owned(&plan, accumulator)
             .map_err(EffectCalculationError::Apply)?;
 
         let output = self

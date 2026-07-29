@@ -5,8 +5,8 @@ use std::convert::Infallible;
 use exile_core::effect::{
     ActiveEffectCollection, EffectAccumulatorFactory, EffectAccumulatorFinalizer, EffectApplier,
     EffectCalculationError, EffectCalculationFromInputError, EffectCalculator, EffectCollection,
-    EffectCollectionEvaluator, EffectEntry, EffectOrigin, EffectSource,
-    calculation::EffectExecutionPlanValidationError,
+    EffectCollectionEvaluator, EffectEntry, EffectExecutionPlanValidationError, EffectOrigin,
+    EffectSource,
 };
 
 use support::{
