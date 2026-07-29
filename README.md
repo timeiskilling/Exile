@@ -1945,6 +1945,7 @@ fn main() {
 ```
 
 The current calculation begins with `100%` base movement speed and applies the `25%` modifier from the current boots, producing a cached baseline of `125%`. The candidate factory creates a new build containing boots with a `35%` modifier. Candidate calculation therefore produces `135%`, and `NumericStatDifference` reports an absolute improvement of `10`.
+
 ---
 
 <a id="section-18"></a>
