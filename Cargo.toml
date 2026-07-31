@@ -1,4 +1,4 @@
 [workspace]
 resolver = "3"
-members = ["exile","exile-core", "exile-error"]
+members = ["exile","exile-core", "exile-error", "exile-poe2"]
 exclude = ["sherpa-test"]

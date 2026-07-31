@@ -17,11 +17,8 @@ pub struct TestModifierDefinition {
 pub enum TestModifierKind {
     MovementSpeed,
     MaximumLife,
-
     AddedPhysicalDamage,
-
     GrantsPassiveNode { node_id: TestPassiveNodeId },
-
     Unsupported,
 }
 

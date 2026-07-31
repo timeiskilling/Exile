@@ -235,6 +235,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "exile-poe2"
+version = "0.1.0"
+dependencies = [
+ "exile-core",
+]
+
+[[package]]
 name = "filetime"
 version = "0.2.29"
 source = "registry+https://github.com/rust-lang/crates.io-index"
