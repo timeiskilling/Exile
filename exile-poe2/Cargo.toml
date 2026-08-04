@@ -5,3 +5,4 @@ edition = "2024"
 
 [dependencies]
 exile-core = { path = "../exile-core" }
+serde = "1.0.229"

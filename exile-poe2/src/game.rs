@@ -52,13 +52,13 @@ pub struct ItemState {
     str_requirement: u16,
 }
 
-impl Game for Poe2 {
-    type ItemBase = ItemBase;
-    type ItemState = ItemState;
-    type ModifierDefinitionId;
-    type ModifierDefinition;
-    type ModifierInstance;
-    type Effect;
-    type EffectCondition;
-    type EffectSourceId;
-}
+// impl Game for Poe2 {
+//     type ItemBase = ItemBase;
+//     type ItemState = ItemState;
+//     type ModifierDefinitionId;
+//     type ModifierDefinition;
+//     type ModifierInstance;
+//     type Effect;
+//     type EffectCondition;
+//     type EffectSourceId;
+// }
