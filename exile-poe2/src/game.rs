@@ -44,12 +44,17 @@ pub enum ItemBase {
     Wand,
 }
 
+#[derive(Debug, PartialEq, Clone, Default)]
+struct Requirements {
+    strength: u32,
+    dexterity: u32,
+    intelligence: u32,
+    level: u32,
+}
+
 #[derive(Debug, Default, PartialEq)]
 pub struct ItemState {
-    item_level: u16,
-    dex_requirement: u16,
-    int_requirement: u16,
-    str_requirement: u16,
+    requirements: Requirements,
 }
 
 // impl Game for Poe2 {

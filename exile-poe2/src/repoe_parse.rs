@@ -14,14 +14,19 @@ struct Class {
 struct ItemClass {
     class: Vec<Class>,
 }
+#[derive(Debug, Deserialize)]
+struct MinMax {
+    min: u32,
+    max: u32,
+}
 
 #[derive(Debug, Deserialize)]
 struct Properties {
-    armour: Option<u32>,
-    energy_shield: Option<u32>,
-    evasion: Option<u32>,
-    ward: Option<u32>,
-    movement_speed: Option<u32>,
+    armour: Option<MinMax>,
+    energy_shield: Option<MinMax>,
+    evasion: Option<MinMax>,
+    ward: Option<MinMax>,
+    movement_speed: Option<i32>,
     block: Option<u32>,
     description: Option<String>,
     directions: Option<String>,
@@ -47,6 +52,7 @@ struct Properties {
     monster_category: Option<String>,
 }
 
+#[derive(Deserialize, Debug)]
 struct Requirements {
     strength: u32,
     dexterity: u32,
@@ -54,13 +60,51 @@ struct Requirements {
     level: u32,
 }
 
+#[derive(Debug, Deserialize)]
+struct VisualIdentity {
+    id: String,
+    dds_file: String,
+}
+
+#[derive(Debug, Deserialize, PartialEq, Clone, Copy)]
+#[serde(rename_all = "snake_case")]
+enum ItemDomain {
+    Undefined,
+    Item,
+    Flask,
+    Misc,
+    Area,
+    Watchstone,
+    HeistNpc,
+    HeistArea,
+    MapDevice,
+    VaultKey,
+    IncursionLimb,
+    Tablet,
+    SanctumRelic,
+    SanctifiedRelic,
+    MemoryLine,
+    UltimatumKey,
+    Sentinel,
+    #[serde(other)]
+    Unknown,
+}
+
+#[derive(Debug, Deserialize)]
 struct Item {
     drop_level: u32,
-    item_class: String,
+    Debug: String,
     name: String,
+    domain: ItemDomain,
+    inherits_from: String,
+    inventory_height: u8,
+    inventory_width: u8,
     properties: Properties,
     requirements: Option<Requirements>,
     skills_granted: Option<Vec<String>>,
+    tags: Vec<String>,
+    implicits: Vec<String>,
+    visual_identity: VisualIdentity,
 }
 
 struct Items {
@@ -174,4 +218,19 @@ pub enum Domain {
     AfflictionJewel,
     #[serde(other)]
     Unknown,
+}
+
+fn read_json_file(path: &str) -> Result<Poe2Item, Box<dyn std::error::Error>> {
+    let file = std::fs::File::open(path)?;
+    let reader = std::io::BufReader::new(file);
+    let value: Poe2Item = serde_json::from_reader(reader)?;
+    Ok(value)
+}
+
+#[test]
+fn test_read_json_file() {
+    let manifest_dir = env!("CARGO_MANIFEST_DIR");
+    let file_path = format!("{}/../base_items.json", manifest_dir);
+    let item = read_json_file(&file_path).unwrap();
+    assert!(!item.is_empty());
 }
