@@ -1,6 +1,6 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt};
 
-use serde::{Deserialize, Deserializer};
+use serde::{Deserialize, Deserializer, Serialize};
 
 type Poe2Item = HashMap<String, Item>;
 
@@ -11,17 +11,14 @@ struct Class {
     influence_tags: Option<Vec<String>>,
 }
 
-struct ItemClass {
-    class: Vec<Class>,
-}
 #[derive(Debug, Deserialize)]
 struct MinMax {
     min: u32,
     max: u32,
 }
 
-#[derive(Debug, Deserialize)]
-struct Properties {
+#[derive(Debug, Deserialize, Default)]
+pub struct Properties {
     armour: Option<MinMax>,
     energy_shield: Option<MinMax>,
     evasion: Option<MinMax>,
@@ -93,7 +90,7 @@ enum ItemDomain {
 #[derive(Debug, Deserialize)]
 struct Item {
     drop_level: u32,
-    Debug: String,
+    debug: String,
     name: String,
     domain: ItemDomain,
     inherits_from: String,
@@ -218,6 +215,269 @@ pub enum Domain {
     AfflictionJewel,
     #[serde(other)]
     Unknown,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
+pub enum ItemClass {
+    #[serde(rename = "Active Skill Gem")]
+    ActiveSkillGem,
+    #[serde(rename = "Amulet")]
+    Amulet,
+    #[serde(rename = "AtlasUpgradeItem")]
+    AtlasUpgradeItem,
+    #[serde(rename = "Belt")]
+    Belt,
+    #[serde(rename = "Body Armour")]
+    BodyArmour,
+    #[serde(rename = "Boots")]
+    Boots,
+    #[serde(rename = "Bow")]
+    Bow,
+    #[serde(rename = "Breachstone")]
+    Breachstone,
+    #[serde(rename = "BrequelFruit")]
+    BrequelFruit,
+    #[serde(rename = "Buckler")]
+    Buckler,
+    #[serde(rename = "Claw")]
+    Claw,
+    #[serde(rename = "ConventionTreasure")]
+    ConventionTreasure,
+    #[serde(rename = "Crossbow")]
+    Crossbow,
+    #[serde(rename = "Currency")]
+    Currency,
+    #[serde(rename = "Dagger")]
+    Dagger,
+    #[serde(rename = "DelveSocketableCurrency")]
+    DelveSocketableCurrency,
+    #[serde(rename = "DelveStackableSocketableCurrency")]
+    DelveStackableSocketableCurrency,
+    #[serde(rename = "DivinationCard")]
+    DivinationCard,
+    #[serde(rename = "Expedition2Logbooks")]
+    Expedition2Logbooks,
+    #[serde(rename = "ExpeditionLogbook")]
+    ExpeditionLogbook,
+    #[serde(rename = "FishingRod")]
+    FishingRod,
+    #[serde(rename = "Flail")]
+    Flail,
+    #[serde(rename = "Focus")]
+    Focus,
+    #[serde(rename = "GiftBox")]
+    GiftBox,
+    #[serde(rename = "Gloves")]
+    Gloves,
+    #[serde(rename = "HeistBlueprint")]
+    HeistBlueprint,
+    #[serde(rename = "HeistContract")]
+    HeistContract,
+    #[serde(rename = "HeistEquipmentReward")]
+    HeistEquipmentReward,
+    #[serde(rename = "HeistEquipmentTool")]
+    HeistEquipmentTool,
+    #[serde(rename = "HeistEquipmentUtility")]
+    HeistEquipmentUtility,
+    #[serde(rename = "HeistEquipmentWeapon")]
+    HeistEquipmentWeapon,
+    #[serde(rename = "Helmet")]
+    Helmet,
+    #[serde(rename = "IncubatorStackable")]
+    IncubatorStackable,
+    #[serde(rename = "IncursionArm")]
+    IncursionArm,
+    #[serde(rename = "IncursionLeg")]
+    IncursionLeg,
+    #[serde(rename = "InstanceLocalItem")]
+    InstanceLocalItem,
+    #[serde(rename = "ItemisedSanctum")]
+    ItemisedSanctum,
+    #[serde(rename = "Jewel")]
+    Jewel,
+    #[serde(rename = "LifeFlask")]
+    LifeFlask,
+    #[serde(rename = "ManaFlask")]
+    ManaFlask,
+    #[serde(rename = "Map")]
+    Map,
+    #[serde(rename = "MapFragment")]
+    MapFragment,
+    #[serde(rename = "MemoryLine")]
+    MemoryLine,
+    #[serde(rename = "Meta Skill Gem")]
+    MetaSkillGem,
+    #[serde(rename = "Omen")]
+    Omen,
+    #[serde(rename = "One Hand Axe")]
+    OneHandAxe,
+    #[serde(rename = "One Hand Mace")]
+    OneHandMace,
+    #[serde(rename = "One Hand Sword")]
+    OneHandSword,
+    #[serde(rename = "PinnacleKeyStackable")]
+    PinnacleKeyStackable,
+    #[serde(rename = "PinnacleKey_OLD")]
+    PinnacleKeyOld,
+    #[serde(rename = "QuestItem")]
+    QuestItem,
+    #[serde(rename = "Quiver")]
+    Quiver,
+    #[serde(rename = "Relic")]
+    Relic,
+    #[serde(rename = "Ring")]
+    Ring,
+    #[serde(rename = "SanctumSpecialRelic")]
+    SanctumSpecialRelic,
+    #[serde(rename = "Sceptre")]
+    Sceptre,
+    #[serde(rename = "SentinelDrone")]
+    SentinelDrone,
+    #[serde(rename = "Shield")]
+    Shield,
+    #[serde(rename = "SkillGemToken")]
+    SkillGemToken,
+    #[serde(rename = "SoulCore")]
+    SoulCore,
+    #[serde(rename = "Spear")]
+    Spear,
+    #[serde(rename = "StackableCurrency")]
+    StackableCurrency,
+    #[serde(rename = "Staff")]
+    Staff,
+    #[serde(rename = "Support Skill Gem")]
+    SupportSkillGem,
+    #[serde(rename = "Talisman")]
+    Talisman,
+    #[serde(rename = "TowerAugmentation")]
+    TowerAugmentation,
+    #[serde(rename = "TrapTool")]
+    TrapTool,
+    #[serde(rename = "Two Hand Axe")]
+    TwoHandAxe,
+    #[serde(rename = "Two Hand Mace")]
+    TwoHandMace,
+    #[serde(rename = "Two Hand Sword")]
+    TwoHandSword,
+    #[serde(rename = "UltimatumKey")]
+    UltimatumKey,
+    #[serde(rename = "UncutReservationGemStackable")]
+    UncutReservationGemStackable,
+    #[serde(rename = "UncutReservationGem_OLD")]
+    UncutReservationGemOld,
+    #[serde(rename = "UncutSkillGemStackable")]
+    UncutSkillGemStackable,
+    #[serde(rename = "UncutSkillGem_OLD")]
+    UncutSkillGemOld,
+    #[serde(rename = "UncutSupportGemStackable")]
+    UncutSupportGemStackable,
+    #[serde(rename = "UncutSupportGem_OLD")]
+    UncutSupportGemOld,
+    #[serde(rename = "UtilityFlask")]
+    UtilityFlask,
+    #[serde(rename = "VaultKey")]
+    VaultKey,
+    #[serde(rename = "Wand")]
+    Wand,
+    #[serde(rename = "Warstaff")]
+    Warstaff,
+    #[default]
+    Unknown,
+}
+
+impl ItemClass {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            ItemClass::ActiveSkillGem => "Active Skill Gem",
+            ItemClass::Amulet => "Amulet",
+            ItemClass::AtlasUpgradeItem => "AtlasUpgradeItem",
+            ItemClass::Belt => "Belt",
+            ItemClass::BodyArmour => "Body Armour",
+            ItemClass::Boots => "Boots",
+            ItemClass::Bow => "Bow",
+            ItemClass::Breachstone => "Breachstone",
+            ItemClass::BrequelFruit => "BrequelFruit",
+            ItemClass::Buckler => "Buckler",
+            ItemClass::Claw => "Claw",
+            ItemClass::ConventionTreasure => "ConventionTreasure",
+            ItemClass::Crossbow => "Crossbow",
+            ItemClass::Currency => "Currency",
+            ItemClass::Dagger => "Dagger",
+            ItemClass::DelveSocketableCurrency => "DelveSocketableCurrency",
+            ItemClass::DelveStackableSocketableCurrency => "DelveStackableSocketableCurrency",
+            ItemClass::DivinationCard => "DivinationCard",
+            ItemClass::Expedition2Logbooks => "Expedition2Logbooks",
+            ItemClass::ExpeditionLogbook => "ExpeditionLogbook",
+            ItemClass::FishingRod => "FishingRod",
+            ItemClass::Flail => "Flail",
+            ItemClass::Focus => "Focus",
+            ItemClass::GiftBox => "GiftBox",
+            ItemClass::Gloves => "Gloves",
+            ItemClass::HeistBlueprint => "HeistBlueprint",
+            ItemClass::HeistContract => "HeistContract",
+            ItemClass::HeistEquipmentReward => "HeistEquipmentReward",
+            ItemClass::HeistEquipmentTool => "HeistEquipmentTool",
+            ItemClass::HeistEquipmentUtility => "HeistEquipmentUtility",
+            ItemClass::HeistEquipmentWeapon => "HeistEquipmentWeapon",
+            ItemClass::Helmet => "Helmet",
+            ItemClass::IncubatorStackable => "IncubatorStackable",
+            ItemClass::IncursionArm => "IncursionArm",
+            ItemClass::IncursionLeg => "IncursionLeg",
+            ItemClass::InstanceLocalItem => "InstanceLocalItem",
+            ItemClass::ItemisedSanctum => "ItemisedSanctum",
+            ItemClass::Jewel => "Jewel",
+            ItemClass::LifeFlask => "LifeFlask",
+            ItemClass::ManaFlask => "ManaFlask",
+            ItemClass::Map => "Map",
+            ItemClass::MapFragment => "MapFragment",
+            ItemClass::MemoryLine => "MemoryLine",
+            ItemClass::MetaSkillGem => "Meta Skill Gem",
+            ItemClass::Omen => "Omen",
+            ItemClass::OneHandAxe => "One Hand Axe",
+            ItemClass::OneHandMace => "One Hand Mace",
+            ItemClass::OneHandSword => "One Hand Sword",
+            ItemClass::PinnacleKeyStackable => "PinnacleKeyStackable",
+            ItemClass::PinnacleKeyOld => "PinnacleKey_OLD",
+            ItemClass::QuestItem => "QuestItem",
+            ItemClass::Quiver => "Quiver",
+            ItemClass::Relic => "Relic",
+            ItemClass::Ring => "Ring",
+            ItemClass::SanctumSpecialRelic => "SanctumSpecialRelic",
+            ItemClass::Sceptre => "Sceptre",
+            ItemClass::SentinelDrone => "SentinelDrone",
+            ItemClass::Shield => "Shield",
+            ItemClass::SkillGemToken => "SkillGemToken",
+            ItemClass::SoulCore => "SoulCore",
+            ItemClass::Spear => "Spear",
+            ItemClass::StackableCurrency => "StackableCurrency",
+            ItemClass::Staff => "Staff",
+            ItemClass::SupportSkillGem => "Support Skill Gem",
+            ItemClass::Talisman => "Talisman",
+            ItemClass::TowerAugmentation => "TowerAugmentation",
+            ItemClass::TrapTool => "TrapTool",
+            ItemClass::TwoHandAxe => "Two Hand Axe",
+            ItemClass::TwoHandMace => "Two Hand Mace",
+            ItemClass::TwoHandSword => "Two Hand Sword",
+            ItemClass::UltimatumKey => "UltimatumKey",
+            ItemClass::UncutReservationGemStackable => "UncutReservationGemStackable",
+            ItemClass::UncutReservationGemOld => "UncutReservationGem_OLD",
+            ItemClass::UncutSkillGemStackable => "UncutSkillGemStackable",
+            ItemClass::UncutSkillGemOld => "UncutSkillGem_OLD",
+            ItemClass::UncutSupportGemStackable => "UncutSupportGemStackable",
+            ItemClass::UncutSupportGemOld => "UncutSupportGem_OLD",
+            ItemClass::UtilityFlask => "UtilityFlask",
+            ItemClass::VaultKey => "VaultKey",
+            ItemClass::Wand => "Wand",
+            ItemClass::Warstaff => "Warstaff",
+            ItemClass::Unknown => "Unknown",
+        }
+    }
+}
+
+impl fmt::Display for ItemClass {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
 }
 
 fn read_json_file(path: &str) -> Result<Poe2Item, Box<dyn std::error::Error>> {
