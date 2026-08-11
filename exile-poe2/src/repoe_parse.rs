@@ -11,61 +11,61 @@ struct Class {
     influence_tags: Option<Vec<String>>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 struct MinMax {
     min: u32,
     max: u32,
 }
 
-#[derive(Debug, Deserialize, Default)]
+#[derive(Debug, Deserialize, Default, Clone)]
 pub struct Properties {
-    armour: Option<MinMax>,
-    energy_shield: Option<MinMax>,
-    evasion: Option<MinMax>,
-    ward: Option<MinMax>,
-    movement_speed: Option<i32>,
-    block: Option<u32>,
-    description: Option<String>,
-    directions: Option<String>,
-    stack_size: Option<u32>,
-    stack_size_currency_tab: Option<u32>,
-    full_stack_turns_into: Option<String>,
-    charges_max: Option<u32>,
-    charges_per_use: Option<u32>,
-    duration: Option<u32>,
-    life_per_use: Option<u32>,
-    mana_per_use: Option<u32>,
+    pub armour: Option<MinMax>,
+    pub energy_shield: Option<MinMax>,
+    pub evasion: Option<MinMax>,
+    pub ward: Option<MinMax>,
+    pub movement_speed: Option<i32>,
+    pub block: Option<u32>,
+    pub description: Option<String>,
+    pub directions: Option<String>,
+    pub stack_size: Option<u32>,
+    pub stack_size_currency_tab: Option<u32>,
+    pub full_stack_turns_into: Option<String>,
+    pub charges_max: Option<u32>,
+    pub charges_per_use: Option<u32>,
+    pub duration: Option<u32>,
+    pub life_per_use: Option<u32>,
+    pub mana_per_use: Option<u32>,
     #[serde(deserialize_with = "deserialize_attack_time", default)]
-    attack_time: Option<f32>,
+    pub attack_time: Option<f32>,
     #[serde(deserialize_with = "deserialize_crit_chance", default)]
-    critical_strike_chance: Option<f32>,
-    physical_damage_max: Option<u32>,
-    physical_damage_min: Option<u32>,
-    range: Option<u32>,
-    mana_burn_ms: Option<u32>,
-    cooldown_ms: Option<u32>,
-    monster_id: Option<String>,
-    monster_ability_text: Option<String>,
-    monster_category: Option<String>,
+    pub critical_strike_chance: Option<f32>,
+    pub physical_damage_max: Option<u32>,
+    pub physical_damage_min: Option<u32>,
+    pub range: Option<u32>,
+    pub mana_burn_ms: Option<u32>,
+    pub cooldown_ms: Option<u32>,
+    pub monster_id: Option<String>,
+    pub monster_ability_text: Option<String>,
+    pub monster_category: Option<String>,
 }
 
-#[derive(Deserialize, Debug)]
-struct Requirements {
-    strength: u32,
-    dexterity: u32,
-    intelligence: u32,
-    level: u32,
+#[derive(Deserialize, Debug, Clone)]
+pub struct Requirements {
+    pub strength: u32,
+    pub dexterity: u32,
+    pub intelligence: u32,
+    pub level: u32,
 }
 
 #[derive(Debug, Deserialize)]
-struct VisualIdentity {
+pub struct VisualIdentity {
     id: String,
     dds_file: String,
 }
 
 #[derive(Debug, Deserialize, PartialEq, Clone, Copy)]
 #[serde(rename_all = "snake_case")]
-enum ItemDomain {
+pub enum ItemDomain {
     Undefined,
     Item,
     Flask,
@@ -88,20 +88,20 @@ enum ItemDomain {
 }
 
 #[derive(Debug, Deserialize)]
-struct Item {
-    drop_level: u32,
-    debug: String,
-    name: String,
-    domain: ItemDomain,
-    inherits_from: String,
-    inventory_height: u8,
-    inventory_width: u8,
-    properties: Properties,
-    requirements: Option<Requirements>,
-    skills_granted: Option<Vec<String>>,
-    tags: Vec<String>,
-    implicits: Vec<String>,
-    visual_identity: VisualIdentity,
+pub struct Item {
+    pub drop_level: u32,
+    pub debug: String,
+    pub name: String,
+    pub domain: ItemDomain,
+    pub inherits_from: String,
+    pub inventory_height: u8,
+    pub inventory_width: u8,
+    pub properties: Properties,
+    pub requirements: Option<Requirements>,
+    pub skills_granted: Option<Vec<String>>,
+    pub tags: Vec<String>,
+    pub implicits: Vec<String>,
+    pub visual_identity: VisualIdentity,
 }
 
 struct Items {
@@ -168,7 +168,7 @@ pub struct GrantedEffectRef {
 
 pub type RawModsFile = HashMap<String, RawMod>;
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, Deserialize, PartialEq, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum GenerationType {
     Prefix,
@@ -480,17 +480,25 @@ impl fmt::Display for ItemClass {
     }
 }
 
-fn read_json_file(path: &str) -> Result<Poe2Item, Box<dyn std::error::Error>> {
+pub fn read_json_file(path: &str) -> Result<Poe2Item, Box<dyn std::error::Error>> {
     let file = std::fs::File::open(path)?;
     let reader = std::io::BufReader::new(file);
     let value: Poe2Item = serde_json::from_reader(reader)?;
     Ok(value)
 }
 
+pub fn parse_mods_json(file_path: &str) -> Result<RawModsFile, Box<dyn std::error::Error>> {
+    let file = std::fs::File::open(file_path)?;
+    let reader = std::io::BufReader::new(file);
+    let mods_map: RawModsFile = serde_json::from_reader(reader)?;
+
+    Ok(mods_map)
+}
+
 #[test]
 fn test_read_json_file() {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
-    let file_path = format!("{}/../base_items.json", manifest_dir);
+    let file_path = format!("{}/data/base_items.json", manifest_dir);
     let item = read_json_file(&file_path).unwrap();
     assert!(!item.is_empty());
 }
