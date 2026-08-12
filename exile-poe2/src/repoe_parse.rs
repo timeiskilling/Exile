@@ -89,7 +89,7 @@ pub enum ItemDomain {
 
 #[derive(Debug, Deserialize)]
 pub struct Item {
-    pub drop_level: u32,
+    pub drop_level: u16,
     pub debug: String,
     pub name: String,
     pub domain: ItemDomain,
@@ -139,7 +139,7 @@ pub struct RawMod {
     pub implicit_tags: Vec<String>,
     pub is_essence_only: bool,
     pub name: String,
-    pub required_level: u32,
+    pub required_level: u16,
     pub spawn_weights: Vec<TagWeight>,
     pub stats: Vec<StatRoll>,
     pub text: Option<String>,
@@ -176,6 +176,7 @@ pub enum GenerationType {
     Corrupted,
     Unique,
     Essence,
+    Desecrated,
     #[serde(other)]
     Unknown,
 }
