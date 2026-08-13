@@ -1,4 +1,7 @@
-use std::{collections::HashMap, fmt};
+use std::{
+    collections::{HashMap, HashSet},
+    fmt,
+};
 
 use serde::{Deserialize, Deserializer, Serialize};
 
@@ -12,7 +15,7 @@ struct Class {
 }
 
 #[derive(Debug, Deserialize, Clone)]
-struct MinMax {
+pub struct MinMax {
     min: u32,
     max: u32,
 }
@@ -99,7 +102,7 @@ pub struct Item {
     pub properties: Properties,
     pub requirements: Option<Requirements>,
     pub skills_granted: Option<Vec<String>>,
-    pub tags: Vec<String>,
+    pub tags: HashSet<String>,
     pub implicits: Vec<String>,
     pub visual_identity: VisualIdentity,
 }
@@ -175,8 +178,6 @@ pub enum GenerationType {
     Suffix,
     Corrupted,
     Unique,
-    Essence,
-    Desecrated,
     #[serde(other)]
     Unknown,
 }

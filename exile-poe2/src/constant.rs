@@ -1,0 +1,1 @@
+pub const MAX_EXPLICIT_MODIFIERS: u16 = 6;

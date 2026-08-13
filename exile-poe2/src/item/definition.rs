@@ -29,6 +29,7 @@ impl Poe2DefinitionRegistry {
                     })
                     .collect(),
                 groups: raw_mod.groups,
+                spawn_weights: raw_mod.spawn_weights,
                 generation_type: raw_mod.generation_type,
             };
             definitions.insert(id, def);

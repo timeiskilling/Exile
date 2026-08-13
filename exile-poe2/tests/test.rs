@@ -32,6 +32,7 @@ fn test_create_poe2_item() {
         drop_level: sinister_base.drop_level,
         properties: sinister_base.properties.clone(),
         requirements: sinister_base.requirements.clone(),
+        tags: sinister_base.tags.clone(),
     };
 
     let item = ItemInstance::<Poe2, Unvalidated>::new(ItemClass::Warstaff, item_state);

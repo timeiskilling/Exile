@@ -1,6 +1,8 @@
+use std::collections::HashSet;
+
 use exile_core::item::ModifierValidator;
 
-use crate::item::state::Poe2;
+use crate::{item::state::Poe2, repoe_parse::TagWeight};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Poe2ModifierValidationError {
@@ -14,9 +16,24 @@ pub enum Poe2ModifierValidationError {
         actual: i64,
     },
     MismatchedStatsCount,
+    MismatchedBase,
+    ModNotFound,
 }
 
 pub struct Poe2ModifierValidator;
+
+impl Poe2ModifierValidator {
+    fn effective_spawn_weight(
+        &self,
+        item_tags: &HashSet<String>,
+        spawn_weights: &[TagWeight],
+    ) -> Option<u32> {
+        spawn_weights
+            .iter()
+            .find(|sw| item_tags.contains(sw.tag.as_str()))
+            .map(|sw| sw.weight)
+    }
+}
 
 impl ModifierValidator<Poe2> for Poe2ModifierValidator {
     type Error = Poe2ModifierValidationError;
@@ -27,8 +44,13 @@ impl ModifierValidator<Poe2> for Poe2ModifierValidator {
         definition: &<Poe2 as exile_core::game::Game>::ModifierDefinition,
         modifier: &<Poe2 as exile_core::game::Game>::ModifierInstance,
     ) -> Result<(), Self::Error> {
-        if definition.stats.len() != modifier.len() {
+        if definition.stats.len() != modifier.rolls.len() {
             return Err(Poe2ModifierValidationError::MismatchedStatsCount);
+        }
+
+        match self.effective_spawn_weight(&item.state().tags, &definition.spawn_weights) {
+            Some(weight) if weight > 0 => {}
+            _ => return Err(Poe2ModifierValidationError::MismatchedBase),
         }
 
         if item.state().item_level < definition.required_level {
@@ -37,8 +59,8 @@ impl ModifierValidator<Poe2> for Poe2ModifierValidator {
                 actual: item.state().item_level,
             });
         }
-        
-        for (stat_def, &rolled_value) in definition.stats.iter().zip(modifier.iter()) {
+
+        for (stat_def, &rolled_value) in definition.stats.iter().zip(modifier.rolls.iter()) {
             if rolled_value < stat_def.min || rolled_value > stat_def.max {
                 return Err(Poe2ModifierValidationError::RollOutsideAllowedRange {
                     minimum: stat_def.min,

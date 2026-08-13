@@ -1,6 +1,7 @@
 use exile_core::game::{Game, ModifierDefinitionIdentity};
 
-use crate::repoe_parse::{GenerationType, ItemClass, Properties, Requirements};
+use crate::repoe_parse::{GenerationType, ItemClass, Properties, Requirements, TagWeight};
+use std::collections::HashSet;
 
 pub struct Poe2;
 
@@ -23,6 +24,7 @@ pub struct Poe2ItemState {
     pub drop_level: u16,
     pub properties: Properties,
     pub requirements: Option<Requirements>,
+    pub tags: HashSet<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -30,6 +32,15 @@ pub struct Poe2ModifierId(pub String);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Poe2ModifierKind(pub String);
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ModOrigin {
+    Crafted,
+    Fractured,
+    Rune,
+    Dropped,
+    Corrupted,
+}
 
 #[derive(Debug, Clone)]
 pub struct Poe2ModifierStat {
@@ -45,6 +56,7 @@ pub struct Poe2ModifierDefinition {
     pub required_level: u16,
     pub stats: Vec<Poe2ModifierStat>,
     pub groups: Vec<String>,
+    pub spawn_weights: Vec<TagWeight>,
     pub generation_type: GenerationType,
 }
 
@@ -53,6 +65,12 @@ impl ModifierDefinitionIdentity for Poe2ModifierDefinition {
     fn modifier_definition_id(&self) -> Self::Id {
         self.id.clone()
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct Poe2ModifierInstance {
+    pub rolls: Vec<i64>,
+    pub origin: ModOrigin,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -64,7 +82,7 @@ impl Game for Poe2 {
     type ModifierDefinitionId = Poe2ModifierId;
     type ModifierDefinition = Poe2ModifierDefinition;
 
-    type ModifierInstance = Vec<i64>;
+    type ModifierInstance = Poe2ModifierInstance;
 
     type Effect = Poe2Effect;
     type EffectCondition = ();
