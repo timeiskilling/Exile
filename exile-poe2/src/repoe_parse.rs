@@ -157,6 +157,12 @@ pub struct TagWeight {
 }
 
 #[derive(Debug, Deserialize, Clone)]
+pub struct HashedTagWeight {
+    pub tag: u64,
+    pub weight: u32,
+}
+
+#[derive(Debug, Deserialize, Clone)]
 pub struct StatRoll {
     pub id: String,
     pub min: i64,

@@ -16,6 +16,6 @@ impl ModifierDefinitionProvider<Poe2> for Poe2DefinitionRegistry {
     fn definition(&self, id: &Poe2ModifierId) -> Result<&Poe2ModifierDefinition, Self::Error> {
         self.definitions
             .get(id)
-            .ok_or_else(|| Poe2DefinitionRegistryError::DefinitionNotFound { id: id.clone() })
+            .ok_or(Poe2DefinitionRegistryError::DefinitionNotFound { id: *id })
     }
 }

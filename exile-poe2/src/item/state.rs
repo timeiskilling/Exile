@@ -1,7 +1,14 @@
 use exile_core::game::{Game, ModifierDefinitionIdentity};
 
-use crate::repoe_parse::{GenerationType, ItemClass, Properties, Requirements, TagWeight};
-use std::collections::HashSet;
+use crate::repoe_parse::{GenerationType, HashedTagWeight, ItemClass, Properties, Requirements};
+use ahash::AHasher;
+use ahash::HashSet;
+use std::hash::{Hash, Hasher};
+pub fn hash_string(s: &str) -> u64 {
+    let mut hasher = AHasher::default();
+    s.hash(&mut hasher);
+    hasher.finish()
+}
 
 pub struct Poe2;
 
@@ -24,14 +31,14 @@ pub struct Poe2ItemState {
     pub drop_level: u16,
     pub properties: Properties,
     pub requirements: Option<Requirements>,
-    pub tags: HashSet<String>,
+    pub tags: HashSet<u64>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Poe2ModifierId(pub String);
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Copy)]
+pub struct Poe2ModifierId(pub u64);
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Poe2ModifierKind(pub String);
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Copy)]
+pub struct Poe2ModifierKind(pub u64);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ModOrigin {
@@ -44,7 +51,7 @@ pub enum ModOrigin {
 
 #[derive(Debug, Clone)]
 pub struct Poe2ModifierStat {
-    pub id: String,
+    pub id_hash: u64,
     pub min: i64,
     pub max: i64,
 }
@@ -55,15 +62,15 @@ pub struct Poe2ModifierDefinition {
     pub kind: Poe2ModifierKind,
     pub required_level: u16,
     pub stats: Vec<Poe2ModifierStat>,
-    pub groups: Vec<String>,
-    pub spawn_weights: Vec<TagWeight>,
+    pub groups: Vec<u64>,
+    pub spawn_weights: Vec<HashedTagWeight>,
     pub generation_type: GenerationType,
 }
 
 impl ModifierDefinitionIdentity for Poe2ModifierDefinition {
     type Id = Poe2ModifierId;
     fn modifier_definition_id(&self) -> Self::Id {
-        self.id.clone()
+        self.id
     }
 }
 
@@ -73,8 +80,10 @@ pub struct Poe2ModifierInstance {
     pub origin: ModOrigin,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Poe2Effect {}
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Copy)]
+pub enum Poe2Effect {
+    Stats { id: u64, value: i64 },
+}
 
 impl Game for Poe2 {
     type ItemBase = ItemClass;

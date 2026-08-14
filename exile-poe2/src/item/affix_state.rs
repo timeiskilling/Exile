@@ -3,13 +3,14 @@ use crate::{
     item::{
         definition::Poe2DefinitionRegistry,
         modifier_definition_provider::Poe2DefinitionRegistryError,
-        state::{ModOrigin, Poe2},
+        state::{ModOrigin, Poe2, hash_string},
     },
     repoe_parse::GenerationType::{self, Prefix, Suffix},
 };
 use exile_core::item::ModifierDefinitionProvider;
 
-const MULTIMOD_RUNE_MOD_ID: &str = "local_can_have_additional_crafted_mods";
+static MULTIMOD_RUNE_MOD_ID: std::sync::LazyLock<u64> =
+    std::sync::LazyLock::new(|| hash_string("local_can_have_additional_crafted_mods"));
 
 #[derive(Default)]
 pub struct ItemAffixState {
@@ -41,7 +42,7 @@ impl ItemAffixState {
             match instance.origin {
                 ModOrigin::Crafted => state.crafted_mods += 1,
                 ModOrigin::Fractured => state.fractured_mods += 1,
-                ModOrigin::Rune if def.id.0 == MULTIMOD_RUNE_MOD_ID => {
+                ModOrigin::Rune if def.id.0 == *MULTIMOD_RUNE_MOD_ID => {
                     state.has_multimod_rune = true;
                 }
                 _ => {}

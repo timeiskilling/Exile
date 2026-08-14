@@ -1,8 +1,8 @@
-use std::collections::HashSet;
+use ahash::HashSet;
 
 use exile_core::item::ModifierValidator;
 
-use crate::{item::state::Poe2, repoe_parse::TagWeight};
+use crate::{item::state::Poe2, repoe_parse::HashedTagWeight};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Poe2ModifierValidationError {
@@ -25,12 +25,12 @@ pub struct Poe2ModifierValidator;
 impl Poe2ModifierValidator {
     fn effective_spawn_weight(
         &self,
-        item_tags: &HashSet<String>,
-        spawn_weights: &[TagWeight],
+        item_tags: &HashSet<u64>,
+        spawn_weights: &[HashedTagWeight],
     ) -> Option<u32> {
         spawn_weights
             .iter()
-            .find(|sw| item_tags.contains(sw.tag.as_str()))
+            .find(|sw| item_tags.contains(&sw.tag))
             .map(|sw| sw.weight)
     }
 }

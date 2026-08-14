@@ -1,8 +1,9 @@
+use ahash::HashSet;
 use exile_core::item::{ItemInstance, Unvalidated};
 use exile_poe2::{
     item::{
         definition::Poe2DefinitionRegistry,
-        state::{ItemRarity, Poe2, Poe2ItemState},
+        state::{ItemRarity, Poe2, Poe2ItemState, hash_string},
     },
     repoe_parse::{ItemClass, parse_mods_json, read_json_file},
 };
@@ -19,6 +20,7 @@ fn test_create_poe2_item() {
         .find(|item| item.name == "Sinister Quarterstaff")
         .expect("Base item not found!");
 
+    let hash_tags: HashSet<u64> = sinister_base.tags.iter().map(|t| hash_string(t)).collect();
     let mods_path = format!("{}/data/mods.json", manifest_dir);
     let raw_mods = parse_mods_json(&mods_path).unwrap();
     let _registry = Poe2DefinitionRegistry::new(raw_mods);
@@ -32,7 +34,7 @@ fn test_create_poe2_item() {
         drop_level: sinister_base.drop_level,
         properties: sinister_base.properties.clone(),
         requirements: sinister_base.requirements.clone(),
-        tags: sinister_base.tags.clone(),
+        tags: hash_tags,
     };
 
     let item = ItemInstance::<Poe2, Unvalidated>::new(ItemClass::Warstaff, item_state);
