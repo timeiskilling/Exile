@@ -1,11 +1,17 @@
-use std::collections::HashMap;
+use ahash::AHashMap;
 
-use crate::item::state::{Poe2, Poe2Effect};
+use crate::item::state::{EquipSlot, Poe2, Poe2Effect};
 
-pub struct Poe2Accumulator {
-    pub stats: HashMap<u64, i64>,
+#[derive(Default)]
+pub struct LocalItemStats {
+    pub stats: AHashMap<u64, i64>,
 }
 
+#[derive(Default)]
+pub struct Poe2Accumulator {
+    pub global_stats: AHashMap<u64, i64>,
+    pub equipment_stats: AHashMap<EquipSlot, LocalItemStats>,
+}
 pub struct Poe2EffectApplier;
 
 impl exile_core::effect::EffectApplier<Poe2> for Poe2EffectApplier {
@@ -18,8 +24,12 @@ impl exile_core::effect::EffectApplier<Poe2> for Poe2EffectApplier {
         accumulator: &mut Self::Accumulator,
     ) -> Result<(), Self::Error> {
         match effect {
-            Poe2Effect::Stats { id, value } => {
-                *accumulator.stats.entry(*id).or_insert(0) += value;
+            Poe2Effect::GlobalStat { id, value } => {
+                *accumulator.global_stats.entry(*id).or_insert(0) += value;
+            }
+            Poe2Effect::LocalStat { slot, id, value } => {
+                let local_pool = accumulator.equipment_stats.entry(*slot).or_default();
+                *local_pool.stats.entry(*id).or_insert(0) += value;
             }
         }
         Ok(())

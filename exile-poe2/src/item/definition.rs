@@ -34,6 +34,7 @@ impl Poe2DefinitionRegistry {
                         id_hash: stat_hash,
                         min: s.min,
                         max: s.max,
+                        is_local: s.id.starts_with("local_"),
                     }
                 })
                 .collect();

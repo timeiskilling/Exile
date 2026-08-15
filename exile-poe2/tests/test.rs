@@ -3,9 +3,12 @@ use exile_core::item::{ItemInstance, Unvalidated};
 use exile_poe2::{
     item::{
         definition::Poe2DefinitionRegistry,
-        state::{ItemRarity, Poe2, Poe2ItemState, hash_string},
+        state::{EquipSlot, ItemRarity, Poe2, Poe2ItemState, hash_string},
     },
-    repoe_parse::{ItemClass, parse_mods_json, read_json_file},
+    repoe_parse::{
+        ItemClass::{self, Warstaff},
+        parse_mods_json, read_json_file,
+    },
 };
 
 #[test]
@@ -35,6 +38,7 @@ fn test_create_poe2_item() {
         properties: sinister_base.properties.clone(),
         requirements: sinister_base.requirements.clone(),
         tags: hash_tags,
+        equip_slot: EquipSlot::MainHand,
     };
 
     let item = ItemInstance::<Poe2, Unvalidated>::new(ItemClass::Warstaff, item_state);

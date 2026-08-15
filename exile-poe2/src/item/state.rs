@@ -20,6 +20,21 @@ pub enum ItemRarity {
     Unique,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum EquipSlot {
+    MainHand,
+    OffHand,
+    BodyArmour,
+    Helmet,
+    Gloves,
+    Boots,
+    Amulet,
+    Ring1,
+    Ring2,
+    Belt,
+    None,
+}
+
 #[derive(Debug, Clone)]
 pub struct Poe2ItemState {
     pub item_level: u16,
@@ -32,6 +47,7 @@ pub struct Poe2ItemState {
     pub properties: Properties,
     pub requirements: Option<Requirements>,
     pub tags: HashSet<u64>,
+    pub equip_slot: EquipSlot,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Copy)]
@@ -54,6 +70,7 @@ pub struct Poe2ModifierStat {
     pub id_hash: u64,
     pub min: i64,
     pub max: i64,
+    pub is_local: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -82,7 +99,15 @@ pub struct Poe2ModifierInstance {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Copy)]
 pub enum Poe2Effect {
-    Stats { id: u64, value: i64 },
+    GlobalStat {
+        id: u64,
+        value: i64,
+    },
+    LocalStat {
+        slot: EquipSlot,
+        id: u64,
+        value: i64,
+    },
 }
 
 impl Game for Poe2 {
