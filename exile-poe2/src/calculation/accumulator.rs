@@ -11,6 +11,7 @@ pub struct LocalItemStats {
 pub struct Poe2Accumulator {
     pub global_stats: AHashMap<u64, i64>,
     pub equipment_stats: AHashMap<EquipSlot, LocalItemStats>,
+    pub pending_scaling: Vec<Poe2Effect>,
 }
 pub struct Poe2EffectApplier;
 
@@ -30,6 +31,9 @@ impl exile_core::effect::EffectApplier<Poe2> for Poe2EffectApplier {
             Poe2Effect::LocalStat { slot, id, value } => {
                 let local_pool = accumulator.equipment_stats.entry(*slot).or_default();
                 *local_pool.stats.entry(*id).or_insert(0) += value;
+            }
+            Poe2Effect::ScaledStat { .. } => {
+                accumulator.pending_scaling.push(*effect);
             }
         }
         Ok(())

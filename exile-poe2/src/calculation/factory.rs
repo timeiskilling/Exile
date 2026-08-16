@@ -39,6 +39,7 @@ impl EffectAccumulatorFactory for Poe2AccumulatorFactory {
         Ok(Poe2Accumulator {
             global_stats,
             equipment_stats,
+            pending_scaling: Vec::new(),
         })
     }
 }

@@ -10,6 +10,20 @@ pub struct Poe2ModifierEffectResolver {
     pub current_slot: Cell<EquipSlot>,
 }
 
+impl Poe2ModifierEffectResolver {
+    pub fn new() -> Self {
+        Self {
+            current_slot: Cell::new(EquipSlot::None),
+        }
+    }
+}
+
+impl Default for Poe2ModifierEffectResolver {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ModifierEffectResolver<Poe2> for Poe2ModifierEffectResolver {
     type Error = std::convert::Infallible;
 

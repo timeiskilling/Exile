@@ -1,5 +1,7 @@
 use exile_core::game::{Game, ModifierDefinitionIdentity};
 
+use crate::poe2_condition::Poe2Condition;
+use crate::poe2_scaling::Poe2Scaling;
 use crate::repoe_parse::{GenerationType, HashedTagWeight, ItemClass, Properties, Requirements};
 use ahash::AHasher;
 use ahash::HashSet;
@@ -33,6 +35,13 @@ pub enum EquipSlot {
     Ring2,
     Belt,
     None,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum Poe2StatModifierKind {
+    Plain,
+    Conditional(Poe2Condition),
+    Scaled(Poe2Scaling),
 }
 
 #[derive(Debug, Clone)]
@@ -71,6 +80,7 @@ pub struct Poe2ModifierStat {
     pub min: i64,
     pub max: i64,
     pub is_local: bool,
+    pub kind: Poe2StatModifierKind,
 }
 
 #[derive(Debug, Clone)]
@@ -108,6 +118,11 @@ pub enum Poe2Effect {
         id: u64,
         value: i64,
     },
+    ScaledStat {
+        target_id: u64,
+        multiplier: i64,
+        scaling: Poe2Scaling,
+    },
 }
 
 impl Game for Poe2 {
@@ -119,6 +134,6 @@ impl Game for Poe2 {
     type ModifierInstance = Poe2ModifierInstance;
 
     type Effect = Poe2Effect;
-    type EffectCondition = ();
+    type EffectCondition = Poe2Condition;
     type EffectSourceId = String;
 }
