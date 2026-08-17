@@ -6,7 +6,7 @@ use exile_poe2::{
         state::{EquipSlot, ItemRarity, Poe2, Poe2ItemState, hash_string},
     },
     repoe_parse::{
-        ItemClass::{self, Warstaff},
+        ItemClass::{self},
         parse_mods_json, read_json_file,
     },
 };
