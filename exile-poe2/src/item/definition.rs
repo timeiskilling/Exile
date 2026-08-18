@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::{
+    effect::planning::{Poe2ConflictKey, Poe2EffectPhase, Poe2SelectionKey},
     item::state::{
         Poe2ModifierDefinition, Poe2ModifierId, Poe2ModifierKind, Poe2ModifierStat,
         Poe2StatModifierKind, hash_string,
@@ -19,6 +20,39 @@ fn find_valid_split(
         let prefix = &raw_id[..idx];
         (!prefix.is_empty() && known_ids.contains(prefix)).then_some(idx)
     })
+}
+
+pub fn classify_phase(base_id: &str) -> Poe2EffectPhase {
+    if base_id.ends_with("_more_%") {
+        Poe2EffectPhase::MoreLess
+    } else if base_id.ends_with("_+%") {
+        Poe2EffectPhase::IncreasedReduced
+    } else if base_id.contains("converted_to") || base_id.contains("as_extra") {
+        Poe2EffectPhase::Conversion
+    } else {
+        Poe2EffectPhase::AddedFlat
+    }
+}
+
+pub fn parse_conflict_key(raw_id: &str) -> Option<Poe2ConflictKey> {
+    match raw_id {
+        "resolute_technique" => Some(Poe2ConflictKey::ResoluteTechniqueCritOverride),
+        "keystone_chaos_inoculation" => Some(Poe2ConflictKey::ChaosInoculationLifeOverride),
+        "keystone_avatar_of_fire" => Some(Poe2ConflictKey::AvatarOfFireDamageRestriction),
+        _ => None,
+    }
+}
+
+pub fn parse_selection_key(raw_id: &str) -> Option<Poe2SelectionKey> {
+    if raw_id.starts_with("aura_") {
+        return Some(Poe2SelectionKey::Aura(hash_string(raw_id)));
+    }
+
+    match raw_id {
+        "action_speed_cannot_be_reduced_below_base" => Some(Poe2SelectionKey::ActionSpeedFloor),
+        "minimum_frenzy_charges" => Some(Poe2SelectionKey::MinimumFrenzyCharges),
+        _ => None,
+    }
 }
 
 fn extract_condition_or_scaling<'a>(
@@ -72,6 +106,7 @@ impl Poe2DefinitionRegistry {
                 .into_iter()
                 .map(|s| {
                     let (clean_id, kind) = extract_condition_or_scaling(&s.id, &known_stat_ids);
+                    let phase = classify_phase(clean_id);
 
                     let stat_hash = hash_string(clean_id);
                     string_dictionary
@@ -88,6 +123,9 @@ impl Poe2DefinitionRegistry {
                         max: s.max,
                         is_local: clean_id.starts_with("local_"),
                         kind,
+                        phase,
+                        conflict_key: None,
+                        selection_key: None,
                     }
                 })
                 .collect();

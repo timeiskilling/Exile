@@ -1,5 +1,6 @@
 use exile_core::game::{Game, ModifierDefinitionIdentity};
 
+use crate::effect::planning::{Poe2ConflictKey, Poe2EffectPhase, Poe2SelectionKey};
 use crate::poe2_condition::Poe2Condition;
 use crate::poe2_scaling::Poe2Scaling;
 use crate::repoe_parse::{GenerationType, HashedTagWeight, ItemClass, Properties, Requirements};
@@ -81,6 +82,10 @@ pub struct Poe2ModifierStat {
     pub max: i64,
     pub is_local: bool,
     pub kind: Poe2StatModifierKind,
+    pub phase: Poe2EffectPhase,
+
+    pub conflict_key: Option<Poe2ConflictKey>,
+    pub selection_key: Option<Poe2SelectionKey>,
 }
 
 #[derive(Debug, Clone)]
