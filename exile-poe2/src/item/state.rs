@@ -45,6 +45,43 @@ pub enum Poe2StatModifierKind {
     Scaled(Poe2Scaling),
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum StatBucket {
+    Life,
+    Mana,
+    EnergyShield,
+    Spirit,
+    Armour,
+    Evasion,
+    Block,
+    FireResistance,
+    ColdResistance,
+    LightningResistance,
+    ChaosResistance,
+    Strength,
+    Dexterity,
+    Intelligence,
+}
+
+pub fn classify_bucket(tags: &[String]) -> Option<StatBucket> {
+    const RULES: &[(&str, StatBucket)] = &[
+        ("fire_resistance", StatBucket::FireResistance),
+        ("cold_resistance", StatBucket::ColdResistance),
+        ("lightning_resistance", StatBucket::LightningResistance),
+        ("chaos_resistance", StatBucket::ChaosResistance),
+        ("energy_shield", StatBucket::EnergyShield),
+        ("life", StatBucket::Life),
+        ("mana", StatBucket::Mana),
+        ("armour", StatBucket::Armour),
+        ("evasion", StatBucket::Evasion),
+        ("block", StatBucket::Block),
+    ];
+    RULES
+        .iter()
+        .find(|(tag, _)| tags.iter().any(|t| t == tag))
+        .map(|(_, b)| *b)
+}
+
 #[derive(Debug, Clone)]
 pub struct Poe2ItemState {
     pub item_level: u16,
@@ -83,7 +120,7 @@ pub struct Poe2ModifierStat {
     pub is_local: bool,
     pub kind: Poe2StatModifierKind,
     pub phase: Poe2EffectPhase,
-
+    pub buckets: Vec<StatBucket>,
     pub conflict_key: Option<Poe2ConflictKey>,
     pub selection_key: Option<Poe2SelectionKey>,
 }

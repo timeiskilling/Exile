@@ -4,12 +4,51 @@ use crate::{
     effect::planning::{Poe2ConflictKey, Poe2EffectPhase, Poe2SelectionKey},
     item::state::{
         Poe2ModifierDefinition, Poe2ModifierId, Poe2ModifierKind, Poe2ModifierStat,
-        Poe2StatModifierKind, hash_string,
+        Poe2StatModifierKind, StatBucket, hash_string,
     },
     poe2_condition::parse_condition,
     poe2_scaling::parse_scaling,
     repoe_parse::{HashedTagWeight, RawModsFile},
 };
+
+pub fn classify_buckets(tags: &[String], clean_id: &str) -> Vec<StatBucket> {
+    let mut buckets = Vec::new();
+
+    const TAG_RULES: &[(&str, StatBucket)] = &[
+        ("fire_resistance", StatBucket::FireResistance),
+        ("cold_resistance", StatBucket::ColdResistance),
+        ("lightning_resistance", StatBucket::LightningResistance),
+        ("chaos_resistance", StatBucket::ChaosResistance),
+        ("energy_shield", StatBucket::EnergyShield),
+        ("life", StatBucket::Life),
+        ("mana", StatBucket::Mana),
+        ("armour", StatBucket::Armour),
+        ("evasion", StatBucket::Evasion),
+        ("block", StatBucket::Block),
+    ];
+
+    for (tag, bucket) in TAG_RULES {
+        if tags.iter().any(|t| t == tag) {
+            buckets.push(*bucket);
+        }
+    }
+
+    if !buckets.is_empty() {
+        return buckets;
+    }
+
+    if clean_id.contains("strength") {
+        buckets.push(StatBucket::Strength);
+    }
+    if clean_id.contains("dexterity") {
+        buckets.push(StatBucket::Dexterity);
+    }
+    if clean_id.contains("intelligence") {
+        buckets.push(StatBucket::Intelligence);
+    }
+
+    buckets
+}
 
 fn find_valid_split(
     raw_id: &str,
@@ -107,7 +146,7 @@ impl Poe2DefinitionRegistry {
                 .map(|s| {
                     let (clean_id, kind) = extract_condition_or_scaling(&s.id, &known_stat_ids);
                     let phase = classify_phase(clean_id);
-
+                    let buckets = classify_buckets(&raw_mod.implicit_tags, clean_id);
                     let stat_hash = hash_string(clean_id);
                     string_dictionary
                         .entry(stat_hash)
@@ -126,6 +165,7 @@ impl Poe2DefinitionRegistry {
                         phase,
                         conflict_key: None,
                         selection_key: None,
+                        buckets,
                     }
                 })
                 .collect();
