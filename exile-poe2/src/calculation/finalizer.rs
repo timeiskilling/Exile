@@ -173,10 +173,10 @@ impl Poe2Finalizer {
     }
 }
 
-impl EffectAccumulatorFinalizer for Poe2Finalizer {
-    type Accumulator = Poe2Accumulator;
-    type Output = Poe2FinalStat;
-    type Error = std::convert::Infallible;
+// impl EffectAccumulatorFinalizer for Poe2Finalizer {
+//     type Accumulator = Poe2Accumulator;
+//     type Output = Poe2FinalStat;
+//     type Error = std::convert::Infallible;
 
-    fn finalize(&self, mut acc: Poe2Accumulator) -> Result<Poe2FinalStat, Self::Error> {}
-}
+//     fn finalize(&self, mut acc: Poe2Accumulator) -> Result<Poe2FinalStat, Self::Error> {}
+// }
