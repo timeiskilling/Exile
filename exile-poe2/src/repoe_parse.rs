@@ -5,6 +5,8 @@ use std::{
 
 use serde::{Deserialize, Deserializer, Serialize};
 
+use crate::ModType;
+
 type Poe2Item = HashMap<String, Item>;
 
 struct Class {
@@ -147,7 +149,7 @@ pub struct RawMod {
     pub stats: Vec<StatRoll>,
     pub text: Option<String>,
     #[serde(rename = "type")]
-    pub mod_type: String,
+    pub mod_type: ModType,
 }
 
 #[derive(Debug, Deserialize, Clone)]

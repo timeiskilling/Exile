@@ -1,15 +1,14 @@
-use std::collections::{HashMap, HashSet};
-
 use crate::{
     effect::planning::{Poe2ConflictKey, Poe2EffectPhase, Poe2SelectionKey},
     item::state::{
-        Poe2ModifierDefinition, Poe2ModifierId, Poe2ModifierKind, Poe2ModifierStat,
-        Poe2StatModifierKind, StatBucket, hash_string,
+        Poe2ModifierDefinition, Poe2ModifierId, Poe2ModifierStat, Poe2StatModifierKind, StatBucket,
+        hash_string,
     },
     poe2_condition::parse_condition,
     poe2_scaling::parse_scaling,
     repoe_parse::{HashedTagWeight, RawModsFile},
 };
+use std::collections::{HashMap, HashSet};
 
 pub fn classify_buckets(tags: &[String], clean_id: &str) -> Vec<StatBucket> {
     let mut buckets = Vec::new();
@@ -137,8 +136,8 @@ impl Poe2DefinitionRegistry {
             string_dictionary.insert(mod_id_hash, key.clone());
             let id = Poe2ModifierId(mod_id_hash);
 
-            let kind_hash = hash_string(&raw_mod.mod_type);
-            string_dictionary.insert(kind_hash, raw_mod.mod_type.clone());
+            let kind_hash = hash_string(&raw_mod.mod_type.as_str());
+            string_dictionary.insert(kind_hash, raw_mod.mod_type.as_str().to_string());
 
             let stats = raw_mod
                 .stats
@@ -191,7 +190,7 @@ impl Poe2DefinitionRegistry {
 
             let def = Poe2ModifierDefinition {
                 id,
-                kind: Poe2ModifierKind(kind_hash),
+                kind: raw_mod.mod_type,
                 required_level: raw_mod.required_level,
                 stats,
                 groups,

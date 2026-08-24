@@ -42,11 +42,13 @@ impl ModifierEffectResolver<Poe2> for Poe2ModifierEffectResolver {
                             slot: self.current_slot.get(),
                             id: stat_def.id_hash,
                             value: roll,
+                            mod_type: definition.kind,
                         }
                     } else {
                         Poe2Effect::GlobalStat {
                             id: stat_def.id_hash,
                             value: roll,
+                            mod_type: definition.kind,
                         }
                     };
                     effects.push(EffectEntry::unconditional(effect));
@@ -58,11 +60,13 @@ impl ModifierEffectResolver<Poe2> for Poe2ModifierEffectResolver {
                             slot: self.current_slot.get(),
                             id: stat_def.id_hash,
                             value: roll,
+                            mod_type: definition.kind,
                         }
                     } else {
                         Poe2Effect::GlobalStat {
                             id: stat_def.id_hash,
                             value: roll,
+                            mod_type: definition.kind,
                         }
                     };
                     effects.push(EffectEntry::conditional(effect, *condition));
@@ -73,6 +77,7 @@ impl ModifierEffectResolver<Poe2> for Poe2ModifierEffectResolver {
                         target_id: stat_def.id_hash,
                         multiplier: roll,
                         scaling: *scaling,
+                        mod_type: definition.kind,
                     };
                     effects.push(EffectEntry::unconditional(effect));
                 }

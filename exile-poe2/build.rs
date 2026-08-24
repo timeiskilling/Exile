@@ -37,14 +37,17 @@ fn main() {
 
     generated.push_str("// AUTO-GENERATED. DO NOT EDIT.\n\n");
 
+    generated.push_str("use serde::{Deserialize, Serialize};\n");
     generated.push_str("#[allow(non_camel_case_types)]\n");
     generated.push_str("#[allow(clippy::all)]\n");
 
-    generated.push_str("#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]\n");
+    generated
+        .push_str("#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]\n");
     generated.push_str("pub enum ModType {\n");
 
     for ty in &types {
         let variant = sanitize_ident(ty);
+        writeln!(generated, "    #[serde(rename = {:?})]", ty).expect("Failed to write string");
         writeln!(generated, "    {},", variant).expect("Failed to write string");
     }
 
@@ -63,6 +66,20 @@ fn main() {
     }
 
     generated.push_str("            _ => Err(()),\n");
+    generated.push_str("        }\n");
+    generated.push_str("    }\n");
+    generated.push_str("}\n");
+
+    generated.push_str("\nimpl ModType {\n");
+    generated.push_str("    pub fn as_str(&self) -> &'static str {\n");
+    generated.push_str("        match self {\n");
+
+    for ty in &types {
+        let variant = sanitize_ident(ty);
+        writeln!(generated, "            Self::{} => {:?},", variant, ty)
+            .expect("Failed to write string");
+    }
+
     generated.push_str("        }\n");
     generated.push_str("    }\n");
     generated.push_str("}\n");

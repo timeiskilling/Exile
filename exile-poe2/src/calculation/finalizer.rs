@@ -1,5 +1,4 @@
 use ahash::AHashMap;
-use exile_core::effect::EffectAccumulatorFinalizer;
 
 use crate::{calculation::accumulator::Poe2Accumulator, item::state::StatBucket};
 
@@ -164,19 +163,15 @@ impl Poe2Finalizer {
         buckets_by_id: &AHashMap<u64, Vec<StatBucket>>,
     ) -> AHashMap<StatBucket, i64> {
         let mut totals = AHashMap::default();
-        self.add_stats_to_buckets(&acc.global_stats, buckets_by_id, &mut totals);
-        for local_pool in acc.equipment_stats.values() {
-            self.add_stats_to_buckets(&local_pool.stats, buckets_by_id, &mut totals);
-        }
 
         totals
     }
 }
 
-// impl EffectAccumulatorFinalizer for Poe2Finalizer {
-//     type Accumulator = Poe2Accumulator;
-//     type Output = Poe2FinalStat;
-//     type Error = std::convert::Infallible;
+impl EffectAccumulatorFinalizer for Poe2Finalizer {
+    type Accumulator = Poe2Accumulator;
+    type Output = Poe2FinalStat;
+    type Error = std::convert::Infallible;
 
-//     fn finalize(&self, mut acc: Poe2Accumulator) -> Result<Poe2FinalStat, Self::Error> {}
-// }
+    fn finalize(&self, mut acc: Poe2Accumulator) -> Result<Poe2FinalStat, Self::Error> {}
+}

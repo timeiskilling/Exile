@@ -1,12 +1,13 @@
-use exile_core::game::{Game, ModifierDefinitionIdentity};
-
+use crate::ModType;
 use crate::effect::planning::{Poe2ConflictKey, Poe2EffectPhase, Poe2SelectionKey};
 use crate::poe2_condition::Poe2Condition;
 use crate::poe2_scaling::Poe2Scaling;
 use crate::repoe_parse::{GenerationType, HashedTagWeight, ItemClass, Properties, Requirements};
 use ahash::AHasher;
 use ahash::HashSet;
+use exile_core::game::{Game, ModifierDefinitionIdentity};
 use std::hash::{Hash, Hasher};
+
 pub fn hash_string(s: &str) -> u64 {
     let mut hasher = AHasher::default();
     s.hash(&mut hasher);
@@ -100,9 +101,6 @@ pub struct Poe2ItemState {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Copy)]
 pub struct Poe2ModifierId(pub u64);
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Copy)]
-pub struct Poe2ModifierKind(pub u64);
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ModOrigin {
     Crafted,
@@ -128,7 +126,7 @@ pub struct Poe2ModifierStat {
 #[derive(Debug, Clone)]
 pub struct Poe2ModifierDefinition {
     pub id: Poe2ModifierId,
-    pub kind: Poe2ModifierKind,
+    pub kind: ModType,
     pub required_level: u16,
     pub stats: Vec<Poe2ModifierStat>,
     pub groups: Vec<u64>,
@@ -154,16 +152,19 @@ pub enum Poe2Effect {
     GlobalStat {
         id: u64,
         value: i64,
+        mod_type: ModType,
     },
     LocalStat {
         slot: EquipSlot,
         id: u64,
         value: i64,
+        mod_type: ModType,
     },
     ScaledStat {
         target_id: u64,
         multiplier: i64,
         scaling: Poe2Scaling,
+        mod_type: ModType,
     },
 }
 

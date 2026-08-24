@@ -1,7 +1,7 @@
 use ahash::AHashMap;
 use exile_core::effect::EffectAccumulatorFactory;
 
-use crate::{calculation::accumulator::Poe2Accumulator, item::base::Poe2CharacterBase};
+use crate::{ModType, calculation::accumulator::Poe2Accumulator, item::base::Poe2CharacterBase};
 
 pub struct Poe2AccumulatorFactory;
 
@@ -14,23 +14,38 @@ impl EffectAccumulatorFactory for Poe2AccumulatorFactory {
         let mut global_stats = AHashMap::new();
 
         global_stats.insert(
-            crate::item::state::hash_string("base_maximum_life"),
+            (
+                ModType::BaseLifeAndMana,
+                crate::item::state::hash_string("base_maximum_life"),
+            ),
             input.base_life,
         );
         global_stats.insert(
-            crate::item::state::hash_string("base_maximum_mana"),
+            (
+                ModType::BaseLifeAndMana,
+                crate::item::state::hash_string("base_maximum_mana"),
+            ),
             input.base_mana,
         );
         global_stats.insert(
-            crate::item::state::hash_string("additional_strength"),
+            (
+                ModType::Strength,
+                crate::item::state::hash_string("additional_strength"),
+            ),
             input.base_strength,
         );
         global_stats.insert(
-            crate::item::state::hash_string("additional_dexterity"),
+            (
+                ModType::Dexterity,
+                crate::item::state::hash_string("additional_dexterity"),
+            ),
             input.base_dexterity,
         );
         global_stats.insert(
-            crate::item::state::hash_string("additional_intelligence"),
+            (
+                ModType::Intelligence,
+                crate::item::state::hash_string("additional_intelligence"),
+            ),
             input.base_intelligence,
         );
 
