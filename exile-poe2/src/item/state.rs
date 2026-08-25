@@ -49,7 +49,9 @@ pub enum Poe2StatModifierKind {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum StatBucket {
     Life,
+    LifePercent,
     Mana,
+    ManaPercent,
     EnergyShield,
     Spirit,
     Armour,
@@ -62,6 +64,16 @@ pub enum StatBucket {
     Strength,
     Dexterity,
     Intelligence,
+    ChaosDamagePercent,
+}
+
+pub fn stat_id_to_bucket(stat_id: &str) -> Option<StatBucket> {
+    match stat_id {
+        "chaos_damage_+%" => Some(StatBucket::ChaosDamagePercent),
+        "additional_strength" => Some(StatBucket::Strength),
+
+        _ => None,
+    }
 }
 
 pub fn classify_bucket(tags: &[String]) -> Option<StatBucket> {

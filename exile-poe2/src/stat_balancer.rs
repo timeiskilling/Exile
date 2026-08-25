@@ -1,10 +1,15 @@
-use crate::{ModType, calculation::finalizer::Poe2FinalStat};
+use crate::{ModType, calculation::finalizer::Poe2FinalStat, item::state::EquipSlot};
 
 impl ModType {
-    pub fn resolve_modifier(&self, value: i64, mut final_stat: Poe2FinalStat) {
+    pub fn resolve_modifier(
+        &self,
+        value: i64,
+        slot: Option<EquipSlot>,
+        final_stat: &mut Poe2FinalStat,
+    ) {
         match self {
-            ModType::AbyssTargetMod => todo!(),
-            ModType::AccuracyAttackSpeedHybrid => todo!(),
+            ModType::AbyssTargetMod => {}
+            ModType::AccuracyAttackSpeedHybrid => final_stat.resources.accuracy += value,
             ModType::AddedColdDamagePerFrenzyCharge => todo!(),
             ModType::AddedFireDamageIfBlockedRecently => todo!(),
             ModType::AdditionalAmmo => todo!(),
@@ -38,7 +43,7 @@ impl ModType {
             ModType::AlliesInPresenceAddedLightningDamage => todo!(),
             ModType::AlliesInPresenceAddedPhysicalDamage => todo!(),
             ModType::AlliesInPresenceAllDamage => todo!(),
-            ModType::AlliesInPresenceAllResistances => todo!(),
+            ModType::AlliesInPresenceAllResistances => { /* TODO presence aura in stat*/ }
             ModType::AlliesInPresenceCriticalStrikeChance => todo!(),
             ModType::AlliesInPresenceCriticalStrikeMultiplier => todo!(),
             ModType::AlliesInPresenceIncreasedAccuracy => todo!(),
@@ -740,8 +745,8 @@ impl ModType {
             ModType::StormBladeExplicitLocalIncreasedCriticalStrikeChance => todo!(),
             ModType::StormBladeExplicitShockChance => todo!(),
             ModType::Strength => todo!(),
-            ModType::StrengthAndDexterity => todo!(),
-            ModType::StrengthAndIntelligence => todo!(),
+            ModType::StrengthAndDexterity => {}
+            ModType::StrengthAndIntelligence => {}
             ModType::StunThreshold => todo!(),
             ModType::StunningHitsWithShieldSkillsFullyBreakArmour => todo!(),
             ModType::SummonTotemCastSpeed => todo!(),
