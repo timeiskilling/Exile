@@ -1,7 +1,21 @@
 use ahash::AHashMap;
 use exile_core::effect::EffectAccumulatorFinalizer;
+use std::sync::OnceLock;
 
 use crate::{calculation::accumulator::Poe2Accumulator, item::state::StatBucket};
+
+macro_rules! stat_buckets {
+    ( $( $stat_id:expr => [ $( $bucket:ident ),+ ] ),* $(,)? ) => {{
+        let mut map = AHashMap::new();
+        $(
+            map.insert(
+                crate::item::state::hash_string($stat_id),
+                vec![ $( StatBucket::$bucket ),+ ],
+            );
+        )*
+        map
+    }};
+}
 
 #[derive(Debug, Clone, Default)]
 pub struct Poe2FinalStat {
@@ -188,84 +202,49 @@ impl Poe2Finalizer {
 
         totals
     }
-    pub fn default_bucket_mapping() -> AHashMap<u64, Vec<StatBucket>> {
-        let mut map = AHashMap::new();
+    pub fn get_bucket_mapping() -> &'static AHashMap<u64, Vec<StatBucket>> {
+        static MAPPING: OnceLock<AHashMap<u64, Vec<StatBucket>>> = OnceLock::new();
 
-        map.insert(
-            crate::item::state::hash_string("base_maximum_life"),
-            vec![StatBucket::Life],
-        );
+        MAPPING.get_or_init(|| {
+            stat_buckets! {
+                "base_maximum_life" => [Life],
+                "maximum_life_+%" => [LifePercent],
+                "base_maximum_mana" => [Mana],
+                "maximum_mana_+%" => [ManaPercent],
+                "chaos_damage_+%" => [ChaosDamagePercent],
 
-        map.insert(
-            crate::item::state::hash_string("maximum_life_+%"),
-            vec![StatBucket::LifePercent],
-        );
+                "additional_strength" => [Strength],
+                "additional_dexterity" => [Dexterity],
+                "additional_intelligence" => [Intelligence],
 
-        map.insert(
-            crate::item::state::hash_string("base_maximum_mana"),
-            vec![StatBucket::Mana],
-        );
+                "additional_strength_and_intelligence" => [Strength, Intelligence],
+                "additional_strength_and_dexterity" => [Strength, Dexterity],
+                "additional_all_attributes" => [Strength, Dexterity, Intelligence],
 
-        map.insert(
-            crate::item::state::hash_string("maximum_mana_+%"),
-            vec![StatBucket::ManaPercent],
-        );
-        map.insert(
-            crate::item::state::hash_string("chaos_damage_+%"),
-            vec![StatBucket::ChaosDamagePercent],
-        );
-        map.insert(
-            crate::item::state::hash_string("additional_strength"),
-            vec![StatBucket::Strength],
-        );
-        map.insert(
-            crate::item::state::hash_string("additional_strength_and_intelligence"),
-            vec![StatBucket::Strength, StatBucket::Intelligence],
-        );
-        map.insert(
-            crate::item::state::hash_string("additional_strength_and_dexterity"),
-            vec![StatBucket::Strength, StatBucket::Dexterity],
-        );
-        map.insert(
-            crate::item::state::hash_string("additional_all_attributes"),
-            vec![
-                StatBucket::Strength,
-                StatBucket::Dexterity,
-                StatBucket::Intelligence,
-            ],
-        );
+                "base_fire_damage_resistance_%" => [FireResistance],
+                "base_cold_damage_resistance_%" => [ColdResistance],
+                "base_lightning_damage_resistance_%" => [LightningResistance],
+                "base_chaos_damage_resistance_%" => [ChaosResistance],
 
-        map.insert(
-            crate::item::state::hash_string("base_fire_damage_resistance_%"),
-            vec![StatBucket::FireResistance],
-        );
+                "base_resist_all_elements_%" => [
+                    FireResistance,
+                    ColdResistance,
+                    LightningResistance,
+                    ChaosResistance
+                ],
 
-        map.insert(
-            crate::item::state::hash_string("base_cold_damage_resistance_%"),
-            vec![StatBucket::ColdResistance],
-        );
-
-        map.insert(
-            crate::item::state::hash_string("base_lightning_damage_resistance_%"),
-            vec![StatBucket::LightningResistance],
-        );
-
-        map.insert(
-            crate::item::state::hash_string("base_resist_all_elements_%"),
-            vec![
-                StatBucket::FireResistance,
-                StatBucket::ColdResistance,
-                StatBucket::LightningResistance,
-                StatBucket::ChaosResistance,
-            ],
-        );
-
-        map.insert(
-            crate::item::state::hash_string("base_chaos_damage_resistance_%"),
-            vec![StatBucket::ChaosResistance],
-        );
-
-        map
+                "base_physical_damage_reduction_rating" => [Armour],
+                "base_evasion_rating" => [Evasion],
+                "base_maximum_energy_shield" => [EnergyShield],
+                "physical_damage_reduction_rating_+%" => [ArmourPercent],
+                "maximum_energy_shield_+%" => [MaximumEnergyShieldPercent],
+                "local_base_physical_damage_reduction_rating" => [Armour],
+                "local_base_evasion_rating" => [Evasion],
+                "local_energy_shield" => [EnergyShield],
+                "local_physical_damage_reduction_rating_+%" => [ArmourPercent],
+                "local_evasion_rating_+%" => [EvasionPercent],
+            }
+        })
     }
 }
 
@@ -276,9 +255,9 @@ impl EffectAccumulatorFinalizer for Poe2Finalizer {
 
     fn finalize(&self, acc: Poe2Accumulator) -> Result<Poe2FinalStat, Self::Error> {
         let mut final_stat = Poe2FinalStat::default();
-        let buckets_by_id = Self::default_bucket_mapping();
+        let buckets_by_id = Self::get_bucket_mapping();
 
-        let bucket_totals = self.finalize_by_bucket(&acc, &buckets_by_id);
+        let bucket_totals = self.finalize_by_bucket(&acc, buckets_by_id);
 
         // Example of applying a bucket total to the final stat:
         if let Some(&_chaos_dmg) = bucket_totals.get(&StatBucket::ChaosDamagePercent) {
