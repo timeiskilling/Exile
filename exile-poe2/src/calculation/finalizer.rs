@@ -28,6 +28,28 @@ pub struct Poe2FinalStat {
 }
 
 #[derive(Debug, Clone, Default)]
+pub struct Poe2ItemFinalStat {
+    pub quality: u64,
+    // Defenses
+    pub local_flat_armour: u64,
+    pub local_percent_armour: f64,
+
+    pub local_flat_evasion: u64,
+    pub local_percent_evasion: f64,
+
+    pub local_energy_shield: u64,
+    pub local_percent_energy_shield: f64,
+
+    // Offenses (Weapon)
+    pub local_flat_physical_min: u64,
+    pub local_flat_physical_max: u64,
+    pub local_percent_physical: f64,
+
+    pub local_minimum_flat_cold_damage: u64,
+    pub local_maximum_flat_cold_damage: u64,
+}
+
+#[derive(Debug, Clone, Default)]
 pub struct Attributes {
     pub strength: u64,
     pub dexterity: u64,
@@ -238,11 +260,23 @@ impl Poe2Finalizer {
                 "base_maximum_energy_shield" => [EnergyShield],
                 "physical_damage_reduction_rating_+%" => [ArmourPercent],
                 "maximum_energy_shield_+%" => [MaximumEnergyShieldPercent],
+
+                //remove
                 "local_base_physical_damage_reduction_rating" => [Armour],
                 "local_base_evasion_rating" => [Evasion],
                 "local_energy_shield" => [EnergyShield],
                 "local_physical_damage_reduction_rating_+%" => [ArmourPercent],
                 "local_evasion_rating_+%" => [EvasionPercent],
+                "local_energy_shield_+%" => [MaximumEnergyShieldPercent],
+                "local_armour_and_evasion_+%" => [ArmourPercent, EvasionPercent],
+                "local_armour_and_energy_shield_+%" => [ArmourPercent, EnergyShield],
+                "local_evasion_and_energy_shield_+%" => [EvasionPercent, MaximumEnergyShieldPercent],
+                "local_attribute_requirements_+%" => [ReducedAttributeRequirementsPercent],
+                "local_armour_and_evasion_and_energy_shield_+%" => [ArmourPercent, EvasionPercent, MaximumEnergyShieldPercent],
+                //remove
+
+                "stun_threshold_+" => [StunThreshold],
+                "base_movement_velocity_+%" => [MovementSpeedPercent],
             }
         })
     }
@@ -265,14 +299,14 @@ impl EffectAccumulatorFinalizer for Poe2Finalizer {
         }
 
         // 2. Resolve global stats via the stat_balancer.rs ModType definitions (for complex/conditional mods)
-        for ((mod_type, _stat_id), value) in acc.global_stats.iter() {
-            mod_type.resolve_modifier(*value, None, &mut final_stat);
+        for ((mod_type, stat_id), value) in acc.global_stats.iter() {
+            mod_type.resolve_modifier(*stat_id, *value, None, &mut final_stat);
         }
 
         // 3. Resolve equipment local stats, passing the slot
         for (slot, local_pool) in acc.equipment_stats.iter() {
-            for ((mod_type, _stat_id), value) in local_pool.stats.iter() {
-                mod_type.resolve_modifier(*value, Some(*slot), &mut final_stat);
+            for ((mod_type, stat_id), value) in local_pool.stats.iter() {
+                mod_type.resolve_modifier(*stat_id, *value, Some(*slot), &mut final_stat);
             }
         }
 

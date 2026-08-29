@@ -3,6 +3,7 @@ use crate::{ModType, calculation::finalizer::Poe2FinalStat, item::state::EquipSl
 impl ModType {
     pub fn resolve_modifier(
         &self,
+        stat_id: u64,
         value: i64,
         slot: Option<EquipSlot>,
         final_stat: &mut Poe2FinalStat,
@@ -450,7 +451,12 @@ impl ModType {
             ModType::LocalAdditionalChainChance => todo!(),
             ModType::LocalArmourAndEnergyShield => todo!(),
             ModType::LocalArmourAndEnergyShieldAndStunThreshold => todo!(),
-            ModType::LocalArmourAndEvasion => todo!(),
+            ModType::LocalArmourAndEvasion => {
+                let percent_id = crate::item::state::hash_string("local_armour_and_evasion_+%");
+                if stat_id == percent_id {
+                    final_stat.defenses.evasion.rating += value as u64;
+                }
+            }
             ModType::LocalArmourAndEvasionAndEnergyShield => todo!(),
             ModType::LocalArmourAndEvasionAndStunThreshold => todo!(),
             ModType::LocalArmourAndStunThreshold => todo!(),

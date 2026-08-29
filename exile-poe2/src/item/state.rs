@@ -68,6 +68,9 @@ pub enum StatBucket {
     Dexterity,
     Intelligence,
     ChaosDamagePercent,
+    StunThreshold,
+    ReducedAttributeRequirementsPercent,
+    MovementSpeedPercent,
 }
 
 pub fn stat_id_to_bucket(stat_id: &str) -> Option<StatBucket> {

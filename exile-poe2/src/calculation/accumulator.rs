@@ -3,14 +3,16 @@ use ahash::AHashMap;
 use crate::{
     ModType,
     item::state::{EquipSlot, Poe2, Poe2Effect},
+    repoe_parse::Properties,
 };
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct LocalItemStats {
+    pub properties: Properties,
     pub stats: AHashMap<(ModType, u64), i64>,
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct Poe2Accumulator {
     pub global_stats: AHashMap<(ModType, u64), i64>,
     pub equipment_stats: AHashMap<EquipSlot, LocalItemStats>,
