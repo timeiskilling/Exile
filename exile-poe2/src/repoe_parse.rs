@@ -54,7 +54,7 @@ pub struct Properties {
     pub monster_category: Option<String>,
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug, Clone, Default)]
 pub struct Requirements {
     pub strength: u32,
     pub dexterity: u32,

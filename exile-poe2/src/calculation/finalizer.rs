@@ -2,7 +2,9 @@ use ahash::AHashMap;
 use exile_core::effect::EffectAccumulatorFinalizer;
 use std::sync::OnceLock;
 
-use crate::{calculation::accumulator::Poe2Accumulator, item::state::StatBucket};
+use crate::{
+    calculation::accumulator::Poe2Accumulator, item::state::StatBucket, repoe_parse::Requirements,
+};
 
 macro_rules! stat_buckets {
     ( $( $stat_id:expr => [ $( $bucket:ident ),+ ] ),* $(,)? ) => {{
@@ -25,11 +27,14 @@ pub struct Poe2FinalStat {
     pub resistances: Resistances,
     pub protections: Protections, // Stun, Ailments
     pub utility: Utility,         // Flasks, Charms, Charges, Misc
+
+    pub equipment: AHashMap<crate::item::state::EquipSlot, Poe2ItemFinalStat>,
 }
 
 #[derive(Debug, Clone, Default)]
 pub struct Poe2ItemFinalStat {
     pub quality: u64,
+    pub requirements: Requirements,
     // Defenses
     pub local_flat_armour: u64,
     pub local_percent_armour: f64,
@@ -45,8 +50,17 @@ pub struct Poe2ItemFinalStat {
     pub local_flat_physical_max: u64,
     pub local_percent_physical: f64,
 
-    pub local_minimum_flat_cold_damage: u64,
-    pub local_maximum_flat_cold_damage: u64,
+    pub local_flat_cold_min: u64,
+    pub local_flat_cold_max: u64,
+    pub local_percent_cold: f64,
+
+    pub local_flat_lightning_min: u64,
+    pub local_flat_lightning_max: u64,
+    pub local_percent_lightning: f64,
+
+    pub local_flat_fire_min: u64,
+    pub local_flat_fire_max: u64,
+    pub local_percent_fire: f64,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -258,25 +272,26 @@ impl Poe2Finalizer {
                 "base_physical_damage_reduction_rating" => [Armour],
                 "base_evasion_rating" => [Evasion],
                 "base_maximum_energy_shield" => [EnergyShield],
+
                 "physical_damage_reduction_rating_+%" => [ArmourPercent],
                 "maximum_energy_shield_+%" => [MaximumEnergyShieldPercent],
-
-                //remove
-                "local_base_physical_damage_reduction_rating" => [Armour],
-                "local_base_evasion_rating" => [Evasion],
-                "local_energy_shield" => [EnergyShield],
-                "local_physical_damage_reduction_rating_+%" => [ArmourPercent],
-                "local_evasion_rating_+%" => [EvasionPercent],
-                "local_energy_shield_+%" => [MaximumEnergyShieldPercent],
-                "local_armour_and_evasion_+%" => [ArmourPercent, EvasionPercent],
-                "local_armour_and_energy_shield_+%" => [ArmourPercent, EnergyShield],
-                "local_evasion_and_energy_shield_+%" => [EvasionPercent, MaximumEnergyShieldPercent],
-                "local_attribute_requirements_+%" => [ReducedAttributeRequirementsPercent],
-                "local_armour_and_evasion_and_energy_shield_+%" => [ArmourPercent, EvasionPercent, MaximumEnergyShieldPercent],
-                //remove
-
                 "stun_threshold_+" => [StunThreshold],
                 "base_movement_velocity_+%" => [MovementSpeedPercent],
+
+                "thorns_minimum_base_physical_damage" => [ThornsPhysicalMin],
+                "thorns_maximum_base_physical_damage" => [ThornsPhysicalMax],
+
+                "attack_minimum_added_physical_damage" => [GlobalAttackPhysicalMin],
+                "attack_maximum_added_physical_damage" => [GlobalAttackPhysicalMax],
+
+                "attack_minimum_added_fire_damage" => [GlobalAttackFireMin],
+                "attack_maximum_added_fire_damage" => [GlobalAttackFireMax],
+
+                "attack_minimum_added_cold_damage" => [GlobalAttackColdMin],
+                "attack_maximum_added_cold_damage" => [GlobalAttackColdMax],
+
+                "attack_minimum_added_lightning_damage" => [GlobalAttackLightningMin],
+                "attack_maximum_added_lightning_damage" => [GlobalAttackLightningMax],
             }
         })
     }

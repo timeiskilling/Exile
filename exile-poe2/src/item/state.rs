@@ -60,6 +60,8 @@ pub enum StatBucket {
     Evasion,
     EvasionPercent,
     Block,
+    ThornsPhysicalMin,
+    ThornsPhysicalMax,
     FireResistance,
     ColdResistance,
     LightningResistance,
@@ -71,6 +73,14 @@ pub enum StatBucket {
     StunThreshold,
     ReducedAttributeRequirementsPercent,
     MovementSpeedPercent,
+    GlobalAttackPhysicalMin,
+    GlobalAttackPhysicalMax,
+    GlobalAttackFireMin,
+    GlobalAttackFireMax,
+    GlobalAttackColdMin,
+    GlobalAttackColdMax,
+    GlobalAttackLightningMin,
+    GlobalAttackLightningMax,
 }
 
 pub fn stat_id_to_bucket(stat_id: &str) -> Option<StatBucket> {
