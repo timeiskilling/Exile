@@ -81,6 +81,19 @@ pub enum StatBucket {
     GlobalAttackColdMax,
     GlobalAttackLightningMin,
     GlobalAttackLightningMax,
+    AlliesInPresenceAttackPhysicalMin,
+    AlliesInPresenceAttackPhysicalMax,
+    AlliesInPresenceAttackFireMin,
+    AlliesInPresenceAttackFireMax,
+    AlliesInPresenceAttackColdMin,
+    AlliesInPresenceAttackColdMax,
+    AlliesInPresenceAttackLightningMin,
+    AlliesInPresenceAttackLightningMax,
+    AlliesInPresenceAttackChaosMin,
+    AlliesInPresenceAttackChaosMax,
+    AlliesInPresenceDamageIncreasePrecent,
+    AccuracyRating,
+    ChanceToNotConsumeExertedAttack,
 }
 
 pub fn stat_id_to_bucket(stat_id: &str) -> Option<StatBucket> {

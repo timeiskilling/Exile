@@ -61,6 +61,8 @@ pub struct Poe2ItemFinalStat {
     pub local_flat_fire_min: u64,
     pub local_flat_fire_max: u64,
     pub local_percent_fire: f64,
+
+    pub local_accuracy_rating: f64,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -292,6 +294,21 @@ impl Poe2Finalizer {
 
                 "attack_minimum_added_lightning_damage" => [GlobalAttackLightningMin],
                 "attack_maximum_added_lightning_damage" => [GlobalAttackLightningMax],
+
+                "allies_in_presence_attack_minimum_added_physical_damage" => [AlliesInPresenceAttackPhysicalMin],
+                "allies_in_presence_attack_maximum_added_physical_damage" => [AlliesInPresenceAttackPhysicalMax],
+                "allies_in_presence_attack_minimum_added_fire_damage" => [AlliesInPresenceAttackFireMin],
+                "allies_in_presence_attack_maximum_added_fire_damage" => [AlliesInPresenceAttackFireMax],
+                "allies_in_presence_attack_minimum_added_cold_damage" => [AlliesInPresenceAttackColdMin],
+                "allies_in_presence_attack_maximum_added_cold_damage" => [AlliesInPresenceAttackColdMax],
+                "allies_in_presence_attack_minimum_added_lightning_damage" => [AlliesInPresenceAttackLightningMin],
+                "allies_in_presence_attack_maximum_added_lightning_damage" => [AlliesInPresenceAttackLightningMax],
+                "allies_in_presence_attack_minimum_added_chaos_damage" => [AlliesInPresenceAttackChaosMin],
+                "allies_in_presence_attack_maximum_added_chaos_damage" => [AlliesInPresenceAttackChaosMax],
+                "allies_in_presence_damage_+%" => [AlliesInPresenceDamageIncreasePrecent],
+                "local_accuracy_rating" => [AccuracyRating],
+
+                "chance_for_exerted_attacks_to_not_reduce_count_%" => [ChanceToNotConsumeExertedAttack],
             }
         })
     }

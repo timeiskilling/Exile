@@ -97,6 +97,9 @@ impl ModType {
                         "local_maximum_added_lightning_damage" => {
                             item.local_flat_lightning_max += value as u64;
                         },
+                        "local_physical_damage_+%" => {
+                            item.local_percent_physical += value as f64;
+                        },
                     });
                 }
             }
