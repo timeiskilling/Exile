@@ -235,6 +235,93 @@ impl ModType {
                         "local_flask_use_on_stunned" => {
                             item.local_flask_use_on_stunned = true;
                         },
+                        "local_flask_use_on_affected_by_slow" => {
+                            item.local_flask_use_on_affected_by_slow = true;
+                        },
+                        "local_flask_use_on_fire_damage_taken" => {
+                            item.local_flask_use_on_fire_damage_taken = true;
+                        },
+                        "local_flask_use_on_cold_damage_taken" => {
+                            item.local_flask_use_on_cold_damage_taken = true;
+                        },
+                        "local_flask_use_on_lightning_damage_taken" => {
+                            item.local_flask_use_on_lightning_damage_taken = true;
+                        },
+                        "local_flask_use_on_chaos_damage_taken" => {
+                            item.local_flask_use_on_chaos_damage_taken = true;
+                        },
+                        "local_flask_use_on_killing_rare_or_unique_enemy" => {
+                            item.local_flask_use_on_killing_rare_or_unique_enemy = true;
+                        },
+                        "local_charm_trigger_when_cursed" => {
+                            item.local_charm_trigger_when_cursed = true;
+                        },
+                        "local_ward" => {
+                            item.local_maximum_ward += value as u64;
+                        },
+                        "local_gain_X_rage_on_hit" => {
+                            item.local_rage_on_hit += value as u64;
+                        },
+                        "local_weapon_accuracy_is_unaffected_by_distance" => {
+                            item.local_weapon_accuracy_is_unaffected_by_distance = true;
+                        },
+                        "local_culling_strike" => {
+                            item.local_culling_strike = true;
+                        },
+                        "local_chance_to_bleed_on_hit_%" => {
+                            item.local_chance_to_bleed_on_hit += value as f64;
+                        },
+                        "local_cannot_be_thrown" => {
+                            item.local_cannot_be_thrown = true;
+                        },
+                        "local_weapon_daze_chance_%" => {
+                            item.local_weapon_daze_chance += value as f64;
+                        },
+                        "local_always_hit" => {
+                            item.local_always_hit = true;
+                        },
+                        "local_explode_on_kill_with_crit_%_physical_damage_to_deal" => {
+                            item.local_explode_on_kill_with_crit += value as f64;
+                        },
+                        "local_crush_on_hit" => {
+                            item.local_crush_on_hit = true;
+                        },
+                        "local_weapon_implicit_hidden_%_base_damage_is_fire" => {
+                            item.base_fire_damage += value as f64;
+                        },
+                        "local_display_grants_spear_throw_skill" => {
+                            item.local_display_grants_spear_throw_skill = true;
+                        },
+                        "local_maim_on_hit_%" => {
+                            item.local_maim_on_hit += value as f64;
+                        },
+                        "local_projectile_speed_+%" => {
+                            item.local_projectile_speed += value as f64;
+                        },
+                        "local_+%_weapon_range" => {
+                            item.local_weapon_range += value as f64;
+                        },
+                        "local_chance_to_blind_on_hit_%" => {
+                            item.local_chance_to_blind_on_hit += value as f64;
+                        },
+                        "local_poison_on_hit_%" => {
+                            item.local_poison_on_hit += value as f64;
+                        },
+                        "local_apply_X_armour_break_on_crit" => {
+                            item.local_apply_x_armour_break_on_crit += value as u64;
+                        },
+                        "local_weapon_roll_crits_twice" => {
+                            item.local_weapon_roll_crits_twice = true;
+                        },
+                        "local_attacks_cannot_be_blocked" => {
+                            item.local_attacks_cannot_be_blocked = true;
+                        },
+                        "local_additional_attack_chain_chance_%" => {
+                            item.local_chain_chance += value as f64;
+                        },
+                        "local_crossbow_no_ammo_skills_and_give_alternate_grenade_default_attack" => {
+                            item.local_crossbow_no_ammo_skills_and_give_alternate_grenade_default_attack = true;
+                        },
                     });
                 }
             }
