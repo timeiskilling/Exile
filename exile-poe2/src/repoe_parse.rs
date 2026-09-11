@@ -56,9 +56,9 @@ pub struct Properties {
 
 #[derive(Deserialize, Debug, Clone, Default)]
 pub struct Requirements {
-    pub strength: u32,
-    pub dexterity: u32,
-    pub intelligence: u32,
+    pub strength: i32,
+    pub dexterity: i32,
+    pub intelligence: i32,
     pub level: u32,
 }
 

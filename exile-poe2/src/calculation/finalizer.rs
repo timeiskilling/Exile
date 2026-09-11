@@ -59,6 +59,10 @@ pub struct Poe2ItemFinalStat {
     pub local_flat_lightning_max: u64,
     pub local_percent_lightning: f64,
 
+    pub local_flat_chaos_min: u64,
+    pub local_flat_chaos_max: u64,
+    pub local_percent_chaos: f64,
+
     pub local_flat_fire_min: u64,
     pub local_flat_fire_max: u64,
     pub local_percent_fire: f64,
@@ -143,6 +147,17 @@ pub struct Poe2ItemFinalStat {
     pub local_attacks_cannot_be_blocked: bool,
     pub local_chain_chance: f64,
     pub local_crossbow_no_ammo_skills_and_give_alternate_grenade_default_attack: bool,
+    pub local_jewel_effect_base_radius: i64,
+    pub local_jewel_display_radius_change: bool,
+    pub local_jewel_small_passive_in_radius_effect_plus_percent: f64,
+    pub local_jewel_notable_passive_in_radius_effect_plus_percent: f64,
+    pub local_jewel_transform_damage_increases_from_cold_lightning_to_fire: bool,
+    pub local_jewel_transform_damage_increases_from_fire_lightning_to_cold: bool,
+    pub local_jewel_transform_damage_increases_from_cold_fire_to_lightning: bool,
+    pub local_jewel_copy_stats_from_unallocated_non_notable_passives_in_radius: bool,
+    pub local_jewel_allocated_non_notable_passives_in_radius_grant_nothing: bool,
+    pub local_non_unique_item_explicit_prefix_mod_magnitudes_plus_percent: f64,
+    pub local_non_unique_item_explicit_suffix_mod_magnitudes_plus_percent: f64,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -325,6 +340,9 @@ impl Poe2Finalizer {
 
         MAPPING.get_or_init(|| {
             stat_buckets! {
+                "strength_+%" => [StrengthPercent],
+                "dexterity_+%" => [DexterityPercent],
+                "intelligence_+%" => [IntelligencePercent],
                 "base_maximum_life" => [Life],
                 "base_maximum_ward" => [Ward],
                 "maximum_life_+%" => [LifePercent],
@@ -449,6 +467,7 @@ impl Poe2Finalizer {
                 "base_item_found_rarity_+%" => [BaseItemFoundRarityIncreasePrecent],
 
                 "light_radius_+%" => [LightRadiusIncreasePrecent],
+                "base_spirit" => [Spirit],
                 "base_spirit_from_equipment" => [Spirit],
 
                 "self_bleed_duration_+%" => [SelfBleedDurationDecreasePrecent],
@@ -552,6 +571,7 @@ impl Poe2Finalizer {
                 "base_damage_removed_from_mana_before_life_%" => [BaseDamageRemovedFromManaBeforeLifePercent],
                 "self_elemental_status_duration_-%" => [SelfStatusAilmentDurationReductionPercent],
                 "corrupted_skill_gem_level_+" => [CorruptedSkillGemLevelIncrease],
+                "all_skill_gem_level_+" => [AllSkillGemLevelIncrease],
                 "ward_regeneration_rate_+%" => [WardRegenerationRateIncreasePrecent],
 
                 "base_ignite_effect_+%" => [BaseIgniteIncereasedMagnitudePrecent],
@@ -657,6 +677,45 @@ impl Poe2Finalizer {
                 "quarterstaff_hit_damage_freeze_multiplier_+%" => [QuarterstaffHitDamageFreezeMultiplierIncreasePrecent],
                 "quarterstaff_attack_speed_+%" => [QuarterstaffAttackSpeedIncreasePrecent],
                 "quiver_mod_effect_+%" => [QuiverModEffectIncreasePrecent],
+                "triggered_spell_spell_damage_+%" => [TriggeredSpellSpellDamageIncreasePrecent],
+                "unarmed_damage_+%" => [UnarmedDamageIncreasePrecent],
+                "warcry_buff_effect_+%" => [WarcryBuffEffectIncreasePrecent],
+                "warcry_cooldown_speed_+%" => [WarcryCooldownSpeedIncreasePrecent],
+                "warcry_damage_+%" => [WarcryDamageIncreasePrecent],
+                "warcry_speed_+%" => [WarcrySpeedIncreasePrecent],
+                "weapon_swap_speed_+%" => [WeaponSwapSpeedIncreasePrecent],
+                "withered_magnitude_+%" => [WitheredMagnitudeIncreasePrecent],
+                "unarmed_attack_speed_+%" => [UnarmedAttackSpeedIncreasePrecent],
+                "projectile_damage_+%_if_youve_dealt_melee_hit_recently" => [ProjectileDamageIncreasePrecentIfYouveDealtMeleeHitRecently],
+                "melee_damage_+%_if_youve_dealt_projectile_attack_hit_recently" => [MeleeDamageIncreasePrecentIfYouveDealtProjectileAttackHitRecently],
+                "parry_damage_+%" => [ParryDamageIncreasePrecent],
+                "parry_skill_effect_duration_+%" => [ParrySkillEffectDurationIncreasePrecent],
+                "parry_stun_threshold_+%_during_parry" => [ParryStunThresholdIncreasePrecentDuringParry],
+                "volatility_on_kill_%_chance" => [VolatilityOnKillChanceIncreasePrecent],
+                "companion_damage_+%" => [CompanionDamageIncreasePrecent],
+                "companion_maximum_life_+%" => [CompanionMaximumLifeIncreasePrecent],
+                "hazard_damage_+%" => [HazardDamageIncreasePrecent],
+                "chance_to_inflict_incision_on_attack_hit_%" => [ChanceToInflictIncisionOnAttackHitIncreasePrecent],
+                "glory_generation_+%_for_banners" => [GloryGenerationIncreasePrecentForBanners],
+                "banner_area_of_effect_+%" => [BannerAreaOfEffectIncreasePrecent],
+                "banner_duration_+%" => [BannerDurationIncreasePrecent],
+                "apply_debilitate_on_hit_while_emerald_sapphire_socketed" => [ApplyDebilitateOnHitWhileEmeraldSapphireSocketed],
+                "apply_blind_on_hit_while_ruby_sapphire_socketed" => [ApplyBlindOnHitWhileRubySapphireSocketed],
+                "apply_exposure_on_hit_while_ruby_emerald_socketed" => [ApplyExposureOnHitWhileRubyEmeraldSocketed],
+                "cannot_die" => [CannotDie],
+                "gold_+%_from_enemies" => [GoldFromEnemiesIncreasePrecent],
+                "max_endurance_charges" => [MaxEnduranceCharges],
+                "max_frenzy_charges" => [MaxFrenzyCharges],
+                "max_power_charges" => [MaxPowerCharges],
+                "additional_maximum_block_%" => [AdditionalMaximumBlockIncreasePrecent],
+                "life_gained_on_block" => [LifeGainedOnBlock],
+                "mana_gained_on_block" => [ManaGainedOnBlock],
+                "damage_+%" => [DamageIncreasePrecent],
+                "skill_speed_%" => [SkillSpeedIncreasePrecent],
+                "base_debuff_slow_magnitude_+%" => [BaseDebuffSlowMagnitudeIncreasePrecent],
+                "generate_x_charges_for_life_flasks_per_minute" => [GenerateXChargesForLifeFlasksPerMinute],
+                "generate_x_charges_for_mana_flasks_per_minute" => [GenerateXChargesForManaFlasksPerMinute],
+                "generate_x_charges_for_charms_per_minute" => [GenerateXChargesForCharmsPerMinute],
                 }
         })
     }

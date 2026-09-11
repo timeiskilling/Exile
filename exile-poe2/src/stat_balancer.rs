@@ -35,38 +35,38 @@ impl ModType {
                             item.local_flat_armour += value as u64;
                         },
                         "local_physical_damage_reduction_rating_+%" => {
-                            item.local_percent_armour += (value as f64) / 100.0;
+                            item.local_percent_armour += value as f64;
                         },
                         "local_energy_shield" => {
                             item.local_energy_shield += value as u64;
                         },
                         "local_energy_shield_+%" => {
-                            item.local_percent_energy_shield += (value as f64) / 100.0;
+                            item.local_percent_energy_shield += value as f64;
                         },
                         "local_base_evasion_rating" => {
                             item.local_flat_evasion += value as u64;
                         },
                         "local_evasion_rating_+%" => {
-                            item.local_percent_evasion += (value as f64) / 100.0;
+                            item.local_percent_evasion += value as f64;
                         },
                         "local_armour_and_evasion_+%" => {
-                            item.local_percent_armour += (value as f64) / 100.0;
-                            item.local_percent_evasion += (value as f64) / 100.0;
+                            item.local_percent_armour += value as f64;
+                            item.local_percent_evasion += value as f64;
                         },
                         "local_armour_and_energy_shield_+%" => {
-                            item.local_percent_armour += (value as f64) / 100.0;
-                            item.local_percent_energy_shield += (value as f64) / 100.0;
+                            item.local_percent_armour += value as f64;
+                            item.local_percent_energy_shield += value as f64;
                         },
                         "local_evasion_and_energy_shield_+%" => {
-                            item.local_percent_evasion += (value as f64) / 100.0;
-                            item.local_percent_energy_shield += (value as f64) / 100.0;
+                            item.local_percent_evasion += value as f64;
+                            item.local_percent_energy_shield += value as f64;
                         },
                         "local_attribute_requirements_+%" => {
                             let multiplier = 1.0 + (value as f32 / 100.0);
 
-                            item.requirements.strength = (item.requirements.strength as f32 * multiplier) as u32;
-                            item.requirements.dexterity = (item.requirements.dexterity as f32 * multiplier) as u32;
-                            item.requirements.intelligence = (item.requirements.intelligence as f32 * multiplier) as u32;
+                            item.requirements.strength = (item.requirements.strength as f32 * multiplier) as i32;
+                            item.requirements.dexterity = (item.requirements.dexterity as f32 * multiplier) as i32;
+                            item.requirements.intelligence = (item.requirements.intelligence as f32 * multiplier) as i32;
                         },
                         "local_armour_and_evasion_and_energy_shield_+%" => {
                             item.local_percent_armour += (value as f64) / 100.0;
@@ -96,6 +96,12 @@ impl ModType {
                         },
                         "local_maximum_added_lightning_damage" => {
                             item.local_flat_lightning_max += value as u64;
+                        },
+                        "local_minimum_added_chaos_damage" => {
+                            item.local_flat_chaos_min += value as u64;
+                        },
+                        "local_maximum_added_chaos_damage" => {
+                            item.local_flat_chaos_max += value as u64;
                         },
                         "local_physical_damage_+%" => {
                             item.local_percent_physical += value as f64;
@@ -321,6 +327,39 @@ impl ModType {
                         },
                         "local_crossbow_no_ammo_skills_and_give_alternate_grenade_default_attack" => {
                             item.local_crossbow_no_ammo_skills_and_give_alternate_grenade_default_attack = true;
+                        },
+                        "local_jewel_effect_base_radius" => {
+                            item.local_jewel_effect_base_radius += value ;
+                        },
+                        "local_jewel_display_radius_change" => {
+                            item.local_jewel_display_radius_change = true;
+                        },
+                        "local_jewel_small_passive_in_radius_effect_+%" => {
+                            item.local_jewel_small_passive_in_radius_effect_plus_percent += value as f64;
+                        },
+                        "local_jewel_notable_passive_in_radius_effect_+%" => {
+                            item.local_jewel_notable_passive_in_radius_effect_plus_percent += value as f64;
+                        },
+                        "local_jewel_transform_damage_increases_from_cold_lightning_to_fire" => {
+                            item.local_jewel_transform_damage_increases_from_cold_lightning_to_fire = true;
+                        },
+                        "local_jewel_transform_damage_increases_from_fire_lightning_to_cold" => {
+                            item.local_jewel_transform_damage_increases_from_fire_lightning_to_cold = true;
+                        },
+                        "local_jewel_transform_damage_increases_from_cold_fire_to_lightning" => {
+                            item.local_jewel_transform_damage_increases_from_cold_fire_to_lightning = true;
+                        },
+                        "local_jewel_copy_stats_from_unallocated_non_notable_passives_in_radius" => {
+                            item.local_jewel_copy_stats_from_unallocated_non_notable_passives_in_radius = true;
+                        },
+                        "local_jewel_allocated_non_notable_passives_in_radius_grant_nothing" => {
+                            item.local_jewel_allocated_non_notable_passives_in_radius_grant_nothing = true;
+                        },
+                        "local_non_unique_item_explicit_prefix_mod_magnitudes_+%" => {
+                            item.local_non_unique_item_explicit_prefix_mod_magnitudes_plus_percent += value as f64;
+                        },
+                        "local_non_unique_item_explicit_suffix_mod_magnitudes_+%" => {
+                            item.local_non_unique_item_explicit_suffix_mod_magnitudes_plus_percent += value as f64;
                         },
                     });
                 }
