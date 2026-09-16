@@ -122,13 +122,19 @@ impl ModType {
                             item.local_attack_speed += value as f64;
                         },
                         "local_critical_strike_chance_+%" => {
-                            item.local_critical_strike_chance += (value as f64) / 100.0;
+                            item.local_critical_strike_chance += value as f64;
+                        },
+                        "local_critical_strike_chance" => {
+                            item.local_flat_critical_strike_chance = (value as f64) / 100.0;
                         },
                         "local_critical_strike_multiplier_+" => {
                             item.local_critical_strike_multiplier += value;
                         },
                         "local_block_chance_+%" => {
                             item.local_block_chance += value as u64;
+                        },
+                        "local_additional_block_chance_%" => {
+                            item.local_additional_block_chance_shield += value as f64;
                         },
                         "local_spirit_+%" => {
                             item.local_spirit_percent_increase += value as u64;
@@ -277,6 +283,9 @@ impl ModType {
                         "local_chance_to_bleed_on_hit_%" => {
                             item.local_chance_to_bleed_on_hit += value as f64;
                         },
+                        "local_chance_to_bleed_on_hit_25%" => {
+                            item.local_chance_to_bleed_on_hit += 25.0;
+                        },
                         "local_cannot_be_thrown" => {
                             item.local_cannot_be_thrown = true;
                         },
@@ -329,10 +338,10 @@ impl ModType {
                             item.local_crossbow_no_ammo_skills_and_give_alternate_grenade_default_attack = true;
                         },
                         "local_jewel_effect_base_radius" => {
-                            item.local_jewel_effect_base_radius += value ;
+                            item.local_jewel_effect_base_radius = value ;
                         },
                         "local_jewel_display_radius_change" => {
-                            item.local_jewel_display_radius_change = true;
+                            item.local_jewel_display_radius_change = value;
                         },
                         "local_jewel_small_passive_in_radius_effect_+%" => {
                             item.local_jewel_small_passive_in_radius_effect_plus_percent += value as f64;
@@ -360,6 +369,63 @@ impl ModType {
                         },
                         "local_non_unique_item_explicit_suffix_mod_magnitudes_+%" => {
                             item.local_non_unique_item_explicit_suffix_mod_magnitudes_plus_percent += value as f64;
+                        },
+                        "local_chance_to_gain_onslaught_on_killing_blow_%" => {
+                            item.local_chance_to_gain_onslaught_on_killing_blow += value as f64;
+                        },
+                        "local_chaos_penetration_%" => {
+                            item.local_chaos_penetration += value as f64;
+                        },
+                        "local_cold_penetration_%" => {
+                            item.local_cold_penetration += value as f64;
+                        },
+                        "local_lightning_penetration_%" => {
+                            item.local_lightning_penetration += value as f64;
+                        },
+                        "local_fire_penetration_%" => {
+                            item.local_fire_penetration += value as f64;
+                        },
+                        "local_display_fire_burst_on_hit_%" => {
+                            item.local_display_fire_burst_on_hit += value as f64;
+                        },
+                        "local_display_grants_skill_bird_aspect_level" => {
+                            item.poe1_local_display_grants_skill_bird_aspect_level = true;
+                        },
+                        "local_display_grants_skill_cat_aspect_level" => {
+                            item.poe1_local_display_grants_skill_cat_aspect_level = true;
+                        },
+                        "local_display_grants_skill_spider_aspect_level" => {
+                            item.poe1_local_display_grants_skill_spider_aspect_level = true;
+                        },
+                        "local_display_grants_skill_crab_aspect_level" => {
+                            item.poe1_local_display_grants_skill_crab_aspect_level = true;
+                        },
+                        "local_explicit_elemental_damage_mod_effect_+%" => {
+                            item.local_explicit_elemental_damage_mod_effect_plus_percent += value as f64;
+                        },
+                        "local_force_corruption_outcome_two_enchants" => {
+                            item.local_force_corruption_outcome_two_enchants = true;
+                        },
+                        "local_hand_wraps_energy_shield_per_level" => {
+                            item.local_hand_wraps_energy_shield_per_level += value as u64;
+                        },
+                        "local_hand_wraps_evasion_rating_per_level" => {
+                            item.local_hand_wraps_evasion_rating_per_level += value as u64;
+                        },
+                        "local_maximum_quality_+" => {
+                            item.local_maximum_quality_is_allowed += value as u64;
+                        },
+                        "local_reload_speed_+%" => {
+                            item.local_reload_speed_plus_percent += value as f64;
+                        },
+                        "local_socketed_items_effect_+%" => {
+                            item.local_socketed_items_effect_plus_percent += value as f64;
+                        },
+                        "local_ward_+%" => {
+                            item.local_ward_plus_percent += value as f64;
+                        },
+                        "local_weapon_range_+" => {
+                            item.local_weapon_range += value as f64;
                         },
                     });
                 }

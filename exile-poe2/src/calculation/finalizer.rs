@@ -39,6 +39,7 @@ pub struct Poe2ItemFinalStat {
     pub local_flat_armour: u64,
     pub local_percent_armour: f64,
     pub local_block_chance: u64,
+    pub local_additional_block_chance_shield: f64,
 
     pub local_flat_evasion: u64,
     pub local_percent_evasion: f64,
@@ -77,6 +78,7 @@ pub struct Poe2ItemFinalStat {
     pub local_attack_speed: f64,
 
     pub local_critical_strike_chance: f64,
+    pub local_flat_critical_strike_chance: f64,
     pub local_critical_strike_multiplier: i64,
 
     pub local_spirit_percent_increase: u64,
@@ -109,6 +111,7 @@ pub struct Poe2ItemFinalStat {
     pub local_item_benefit_socketable_as_if_helmet: bool,
     pub local_item_additional_skill_slots: u64,
     pub local_maximum_quality_is_allowed: u64,
+    pub local_reload_speed_plus_percent: f64,
     pub local_item_benefit_socketable_as_if_gloves: bool,
     pub local_item_benefit_socketable_as_if_boots: bool,
     pub local_charm_slots: u64,
@@ -148,7 +151,7 @@ pub struct Poe2ItemFinalStat {
     pub local_chain_chance: f64,
     pub local_crossbow_no_ammo_skills_and_give_alternate_grenade_default_attack: bool,
     pub local_jewel_effect_base_radius: i64,
-    pub local_jewel_display_radius_change: bool,
+    pub local_jewel_display_radius_change: i64,
     pub local_jewel_small_passive_in_radius_effect_plus_percent: f64,
     pub local_jewel_notable_passive_in_radius_effect_plus_percent: f64,
     pub local_jewel_transform_damage_increases_from_cold_lightning_to_fire: bool,
@@ -158,6 +161,22 @@ pub struct Poe2ItemFinalStat {
     pub local_jewel_allocated_non_notable_passives_in_radius_grant_nothing: bool,
     pub local_non_unique_item_explicit_prefix_mod_magnitudes_plus_percent: f64,
     pub local_non_unique_item_explicit_suffix_mod_magnitudes_plus_percent: f64,
+    pub local_chance_to_gain_onslaught_on_killing_blow: f64,
+    pub local_chaos_penetration: f64,
+    pub local_cold_penetration: f64,
+    pub local_lightning_penetration: f64,
+    pub local_fire_penetration: f64,
+    pub local_display_fire_burst_on_hit: f64,
+    pub poe1_local_display_grants_skill_bird_aspect_level: bool,
+    pub poe1_local_display_grants_skill_cat_aspect_level: bool,
+    pub poe1_local_display_grants_skill_crab_aspect_level: bool,
+    pub poe1_local_display_grants_skill_spider_aspect_level: bool,
+    pub local_explicit_elemental_damage_mod_effect_plus_percent: f64,
+    pub local_force_corruption_outcome_two_enchants: bool,
+    pub local_hand_wraps_energy_shield_per_level: u64,
+    pub local_hand_wraps_evasion_rating_per_level: u64,
+    pub local_socketed_items_effect_plus_percent: f64,
+    pub local_ward_plus_percent: f64,
 }
 
 #[derive(Debug, Clone, Default)]
