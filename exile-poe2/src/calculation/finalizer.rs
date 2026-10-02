@@ -27,8 +27,183 @@ pub struct Poe2FinalStat {
     pub resistances: Resistances,
     pub protections: Protections, // Stun, Ailments
     pub utility: Utility,         // Flasks, Charms, Charges, Misc
+    pub offense: OffenseStats,
+    pub spells: SpellStats,
+    pub minions: MinionStats,
+    pub skills: SkillStats,
+    pub conditional: ConditionalStats,
+    pub presence: PresenceStats,
 
     pub equipment: AHashMap<crate::item::state::EquipSlot, Poe2ItemFinalStat>,
+    pub buckets: AHashMap<StatBucket, i64>,
+}
+
+impl Poe2FinalStat {
+    pub fn get_bucket(&self, bucket: StatBucket) -> i64 {
+        self.buckets.get(&bucket).copied().unwrap_or(0)
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct DamageRange {
+    pub min: u64,
+    pub max: u64,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct OffenseStats {
+    pub added_physical: DamageRange,
+    pub added_cold: DamageRange,
+    pub added_fire: DamageRange,
+    pub added_lightning: DamageRange,
+    pub added_chaos: DamageRange,
+
+    pub increased_damage_percent: f64,
+    pub increased_attack_damage_percent: f64,
+    pub increased_physical_damage_percent: f64,
+    pub increased_cold_damage_percent: f64,
+    pub increased_fire_damage_percent: f64,
+    pub increased_lightning_damage_percent: f64,
+    pub increased_chaos_damage_percent: f64,
+    pub increased_elemental_damage_percent: f64,
+    pub increased_elemental_damage_with_attacks_percent: f64,
+    pub increased_melee_damage_percent: f64,
+    pub increased_projectile_damage_percent: f64,
+    pub increased_area_damage_percent: f64,
+    pub increased_bow_damage_percent: f64,
+    pub increased_crossbow_damage_percent: f64,
+    pub increased_axe_damage_percent: f64,
+    pub increased_dagger_damage_percent: f64,
+    pub increased_flail_damage_percent: f64,
+
+    pub increased_attack_speed_percent: f64,
+    pub accuracy_rating: i64,
+    pub increased_accuracy_rating_percent: f64,
+
+    pub critical_strike_chance_percent: f64,
+    pub critical_strike_multiplier_percent: f64,
+
+    pub damage_over_time_multiplier_percent: f64,
+    pub bleed_dot_multiplier_percent: f64,
+    pub poison_dot_multiplier_percent: f64,
+    pub ignite_dot_multiplier_percent: f64,
+    pub cold_dot_multiplier_percent: f64,
+    pub chaos_dot_multiplier_percent: f64,
+
+    pub fire_penetration_percent: f64,
+    pub cold_penetration_percent: f64,
+    pub lightning_penetration_percent: f64,
+    pub chaos_penetration_percent: f64,
+    pub elemental_penetration_percent: f64,
+
+    pub life_leech_percent: f64,
+    pub mana_leech_percent: f64,
+    pub life_gain_on_hit: i64,
+    pub mana_gain_on_hit: i64,
+    pub life_gain_on_kill: i64,
+    pub mana_gain_on_kill: i64,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct SpellStats {
+    pub increased_spell_damage_percent: f64,
+    pub increased_spell_physical_damage_percent: f64,
+    pub increased_cast_speed_percent: f64,
+    pub spell_critical_strike_chance_percent: f64,
+    pub spell_critical_strike_multiplier_percent: f64,
+    pub spell_cooldown_recovery_speed_percent: f64,
+    pub spell_mana_cost_efficiency_percent: f64,
+    pub spells_cost_life_instead_of_mana: bool,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct MinionStats {
+    pub increased_damage_percent: f64,
+    pub increased_maximum_life_percent: f64,
+    pub increased_attack_speed_percent: f64,
+    pub increased_cast_speed_percent: f64,
+    pub increased_area_of_effect_percent: f64,
+    pub increased_duration_percent: f64,
+    pub maximum_minions: u64,
+    pub damage_break_physical_percent: f64,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct SkillStats {
+    pub all_skill_gem_level: i64,
+    pub attack_skill_gem_level: i64,
+    pub spell_skill_gem_level: i64,
+    pub melee_skill_gem_level: i64,
+    pub projectile_skill_gem_level: i64,
+    pub fire_skill_gem_level: i64,
+    pub cold_skill_gem_level: i64,
+    pub lightning_skill_gem_level: i64,
+    pub chaos_skill_gem_level: i64,
+    pub physical_skill_gem_level: i64,
+    pub minion_skill_gem_level: i64,
+    pub trap_skill_gem_level: i64,
+
+    pub cooldown_recovery_speed_percent: f64,
+    pub mana_cost_efficiency_percent: f64,
+    pub life_cost_efficiency_percent: f64,
+    pub rage_cost_efficiency_percent: f64,
+    pub skill_cost_efficiency_percent: f64,
+    pub mana_reservation_efficiency_percent: f64,
+    pub spirit_reservation_efficiency_percent: f64,
+
+    pub increased_area_of_effect_percent: f64,
+    pub skill_effect_duration_percent: f64,
+    pub additional_projectiles: i64,
+    pub additional_chains: i64,
+    pub pierce_chance_percent: f64,
+    pub projectile_speed_percent: f64,
+
+    pub chance_to_not_consume_charges_percent: f64,
+    pub chance_to_not_consume_exerted_attack_percent: f64,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct ConditionalStats {
+    pub added_fire_damage_if_blocked_recently: DamageRange,
+    pub es_recharge_rate_if_blocked_recently_percent: f64,
+
+    pub damage_while_leeching_percent: f64,
+    pub evasion_while_leeching_percent: f64,
+    pub attack_damage_on_low_life_percent: f64,
+    pub attack_speed_on_full_life_percent: f64,
+    pub attack_speed_if_not_hit_recently_percent: f64,
+    pub cast_speed_on_full_life_percent: f64,
+    pub cast_speed_on_low_life_percent: f64,
+    pub cast_speed_on_full_mana_percent: f64,
+    pub damage_against_rare_or_unique_enemies_percent: f64,
+    pub damage_against_marked_enemies_percent: f64,
+    pub crit_chance_against_marked_enemies_percent: f64,
+    pub crit_chance_enemies_far_away_percent: f64,
+    pub crit_damage_enemies_close_range_percent: f64,
+    pub damage_if_consumed_corpse_recently_percent: f64,
+    pub damage_while_missing_ward_percent: f64,
+    pub attack_speed_while_missing_ward_percent: f64,
+    pub chaos_res_while_using_flask_percent: f64,
+    pub ele_penetration_during_flask_percent: f64,
+    pub attack_cast_speed_during_flask_percent: f64,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct PresenceStats {
+    pub area_percent: f64,
+    pub added_physical: DamageRange,
+    pub added_fire: DamageRange,
+    pub added_cold: DamageRange,
+    pub added_lightning: DamageRange,
+    pub added_chaos: DamageRange,
+    pub increased_damage_percent: f64,
+    pub increased_attack_speed_percent: f64,
+    pub increased_cast_speed_percent: f64,
+    pub accuracy_rating: i64,
+    pub critical_strike_chance_percent: f64,
+    pub critical_strike_multiplier_percent: f64,
+    pub all_elemental_resistance_percent: f64,
+    pub life_regeneration_per_minute: f64,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -310,6 +485,303 @@ pub struct Charges {
 pub struct Poe2Finalizer;
 
 impl Poe2Finalizer {
+    fn populate_from_buckets(&self, final_stat: &mut Poe2FinalStat) {
+        // Create a copy of the buckets map so we don't hold a reference to `final_stat`
+        // while trying to mutate other fields on it.
+        let buckets = final_stat.buckets.clone();
+
+        let b = |bucket: StatBucket| -> i64 { buckets.get(&bucket).copied().unwrap_or(0) };
+        let b_f64 = |bucket: StatBucket| -> f64 {
+            (buckets.get(&bucket).copied().unwrap_or(0) as f64) / 100.0
+        };
+
+        // Attributes
+        final_stat.attributes.strength = b(StatBucket::Strength).max(0) as u64;
+        final_stat.attributes.dexterity = b(StatBucket::Dexterity).max(0) as u64;
+        final_stat.attributes.intelligence = b(StatBucket::Intelligence).max(0) as u64;
+
+        // Resources
+        let base_life = b(StatBucket::Life);
+        let inc_life = b_f64(StatBucket::LifePercent);
+        final_stat.resources.life.maximum = ((base_life as f64) * (1.0 + inc_life)).max(0.0) as u64;
+
+        let base_mana = b(StatBucket::Mana);
+        let inc_mana = b_f64(StatBucket::ManaPercent);
+        final_stat.resources.mana.maximum = ((base_mana as f64) * (1.0 + inc_mana)).max(0.0) as u64;
+
+        let base_es = b(StatBucket::EnergyShield);
+        let inc_es = b_f64(StatBucket::MaximumEnergyShieldPercent);
+        final_stat.resources.energy_shield.maximum =
+            ((base_es as f64) * (1.0 + inc_es)).max(0.0) as u64;
+
+        final_stat.resources.spirit = b(StatBucket::Spirit).max(0) as u64;
+        final_stat.resources.rage.maximum = b(StatBucket::MaximumRage).max(0) as u64;
+        final_stat.resources.accuracy = b(StatBucket::AccuracyRating);
+
+        // Defenses
+        let base_armour = b(StatBucket::Armour);
+        let inc_armour = b_f64(StatBucket::ArmourPercent);
+        final_stat.defenses.armour.rating =
+            ((base_armour as f64) * (1.0 + inc_armour)).max(0.0) as u64;
+
+        let base_evasion = b(StatBucket::Evasion);
+        let inc_evasion = b_f64(StatBucket::EvasionPercent);
+        final_stat.defenses.evasion.rating =
+            ((base_evasion as f64) * (1.0 + inc_evasion)).max(0.0) as u64;
+
+        final_stat.defenses.block_chance_percent = b(StatBucket::Block) as f64;
+
+        // Resistances
+        final_stat.resistances.fire.effective_percent = b(StatBucket::FireResistance) as f64;
+        final_stat.resistances.cold.effective_percent = b(StatBucket::ColdResistance) as f64;
+        final_stat.resistances.lightning.effective_percent =
+            b(StatBucket::LightningResistance) as f64;
+        final_stat.resistances.chaos.effective_percent = b(StatBucket::ChaosResistance) as f64;
+
+        final_stat.resistances.fire.max_percent = 75.0 + b(StatBucket::FireResistanceMax) as f64;
+        final_stat.resistances.cold.max_percent = 75.0 + b(StatBucket::ColdResistanceMax) as f64;
+        final_stat.resistances.lightning.max_percent =
+            75.0 + b(StatBucket::LightningResistanceMax) as f64;
+        final_stat.resistances.chaos.max_percent = 75.0 + b(StatBucket::ChaosResistanceMax) as f64;
+
+        // Offense Added Attack Damage
+        final_stat.offense.added_physical.min =
+            b(StatBucket::GlobalAttackPhysicalMin).max(0) as u64;
+        final_stat.offense.added_physical.max =
+            b(StatBucket::GlobalAttackPhysicalMax).max(0) as u64;
+        final_stat.offense.added_fire.min = b(StatBucket::GlobalAttackFireMin).max(0) as u64;
+        final_stat.offense.added_fire.max = b(StatBucket::GlobalAttackFireMax).max(0) as u64;
+        final_stat.offense.added_cold.min = b(StatBucket::GlobalAttackColdMin).max(0) as u64;
+        final_stat.offense.added_cold.max = b(StatBucket::GlobalAttackColdMax).max(0) as u64;
+        final_stat.offense.added_lightning.min =
+            b(StatBucket::GlobalAttackLightningMin).max(0) as u64;
+        final_stat.offense.added_lightning.max =
+            b(StatBucket::GlobalAttackLightningMax).max(0) as u64;
+        final_stat.offense.added_chaos.min =
+            b(StatBucket::AttackMinimumAddedChaosDamage).max(0) as u64;
+        final_stat.offense.added_chaos.max =
+            b(StatBucket::AttackMaximumAddedChaosDamage).max(0) as u64;
+
+        // Offense Increased Percentages
+        final_stat.offense.increased_damage_percent = b_f64(StatBucket::DamageIncreasePrecent);
+        final_stat.offense.increased_attack_damage_percent =
+            b_f64(StatBucket::AttackDamageIncreasePrecent);
+        final_stat.offense.increased_physical_damage_percent =
+            b_f64(StatBucket::PhysicalDamageIncreasePrecent);
+        final_stat.offense.increased_fire_damage_percent =
+            b_f64(StatBucket::FireDamageIncreasePrecent);
+        final_stat.offense.increased_cold_damage_percent =
+            b_f64(StatBucket::ColdDamageIncreasePrecent);
+        final_stat.offense.increased_lightning_damage_percent =
+            b_f64(StatBucket::LightningDamageIncreasePrecent);
+        final_stat.offense.increased_chaos_damage_percent =
+            b_f64(StatBucket::ChaosDamageIncreasePrecent);
+        final_stat.offense.increased_elemental_damage_percent =
+            b_f64(StatBucket::ElementalDamageIncreasePrecent);
+        final_stat
+            .offense
+            .increased_elemental_damage_with_attacks_percent =
+            b_f64(StatBucket::ElementalDamageWithAttackSkillsIncreasePrecent);
+        final_stat.offense.increased_melee_damage_percent =
+            b_f64(StatBucket::MeleeDamageIncreasePrecent);
+        final_stat.offense.increased_projectile_damage_percent =
+            b_f64(StatBucket::ProjectileDamageIncreasePrecent);
+        final_stat.offense.increased_area_damage_percent =
+            b_f64(StatBucket::BaseSkillAreaOfEffectIncreasePrecent);
+        final_stat.offense.increased_bow_damage_percent =
+            b_f64(StatBucket::BowDamageIncreasePrecent);
+        final_stat.offense.increased_crossbow_damage_percent =
+            b_f64(StatBucket::CrossbowDamageIncreasePrecent);
+        final_stat.offense.increased_axe_damage_percent =
+            b_f64(StatBucket::AxeDamageIncreasePrecent);
+        final_stat.offense.increased_dagger_damage_percent =
+            b_f64(StatBucket::DaggerDamageIncreasePrecent);
+        final_stat.offense.increased_flail_damage_percent =
+            b_f64(StatBucket::FlailDamageIncreasePrecent);
+
+        final_stat.offense.increased_attack_speed_percent = b_f64(StatBucket::AttackSpeedPercent);
+        final_stat.offense.accuracy_rating = b(StatBucket::AccuracyRating);
+        final_stat.offense.increased_accuracy_rating_percent =
+            b_f64(StatBucket::AccuracyRatingPercent);
+
+        final_stat.offense.critical_strike_chance_percent =
+            b_f64(StatBucket::CriticalStrikeChanceIncreasePrecent);
+        final_stat.offense.critical_strike_multiplier_percent =
+            b_f64(StatBucket::BaseCriticalStrikeMultiplierIncreasePrecent);
+
+        // Penetration
+        final_stat.offense.fire_penetration_percent = b_f64(StatBucket::FireResistancePenetration);
+        final_stat.offense.cold_penetration_percent = b_f64(StatBucket::ColdResistancePenetration);
+        final_stat.offense.lightning_penetration_percent =
+            b_f64(StatBucket::LightningResistancePenetration);
+
+        // Spells
+        final_stat.spells.increased_spell_damage_percent =
+            b_f64(StatBucket::SpellDamageIncreasePrecent);
+        final_stat.spells.increased_spell_physical_damage_percent =
+            b_f64(StatBucket::SpellPhysicalDamageIncreasePrecent);
+        final_stat.spells.increased_cast_speed_percent =
+            b_f64(StatBucket::BaseCastSpeedIncreasePrecent);
+        final_stat.spells.spell_critical_strike_chance_percent =
+            b_f64(StatBucket::SpellCriticalStrikeChanceIncreasePrecent);
+        final_stat.spells.spell_critical_strike_multiplier_percent =
+            b_f64(StatBucket::BaseSpellCriticalStrikeMultiplierIncreasePrecent);
+        final_stat.spells.spell_cooldown_recovery_speed_percent =
+            b_f64(StatBucket::BaseSpellCooldownSpeedPrecent);
+        final_stat.spells.spell_mana_cost_efficiency_percent =
+            b_f64(StatBucket::BaseSpellManaCostEfficiencyPrecent);
+        final_stat.spells.spells_cost_life_instead_of_mana =
+            b(StatBucket::SpellsCostLifeInsteadOfMana) > 0;
+
+        // Minions
+        final_stat.minions.increased_damage_percent =
+            b_f64(StatBucket::MinionDamageIncreasePrecent);
+        final_stat.minions.increased_maximum_life_percent =
+            b_f64(StatBucket::MinionMaximumLifeIncreasePrecent);
+        final_stat.minions.increased_area_of_effect_percent =
+            b_f64(StatBucket::MinionAreaOfEffectPrecent);
+        final_stat.minions.increased_duration_percent =
+            b_f64(StatBucket::BaseMinionDurationPrecent);
+        final_stat.minions.maximum_minions = b(StatBucket::TemporaryMinionLimitAdds).max(0) as u64;
+
+        // Skills
+        final_stat.skills.all_skill_gem_level = b(StatBucket::AllSkillGemLevelIncrease);
+        final_stat.skills.attack_skill_gem_level = b(StatBucket::AttackSkillGemLevelIncrease);
+        final_stat.skills.spell_skill_gem_level = b(StatBucket::SpellSkillGemLevelIncrease);
+        final_stat.skills.melee_skill_gem_level = b(StatBucket::MeleeSkillGemLevelIncrease);
+        final_stat.skills.projectile_skill_gem_level =
+            b(StatBucket::ProjectileSkillGemLevelIncrease);
+        final_stat.skills.fire_skill_gem_level = b(StatBucket::FireSpellSkillGemLevelIncrease);
+        final_stat.skills.cold_skill_gem_level = b(StatBucket::ColdSpellSkillGemLevelIncrease);
+        final_stat.skills.lightning_skill_gem_level =
+            b(StatBucket::LightningSpellSkillGemLevelIncrease);
+        final_stat.skills.chaos_skill_gem_level = b(StatBucket::ChaosSpellSkillGemLevelIncrease);
+        final_stat.skills.physical_skill_gem_level =
+            b(StatBucket::PhysicalSpellSkillGemLevelIncrease);
+        final_stat.skills.minion_skill_gem_level = b(StatBucket::MinionSkillGemLevelIncrease);
+        final_stat.skills.trap_skill_gem_level = b(StatBucket::TrapSkillGemLevelIncrease);
+
+        final_stat.skills.cooldown_recovery_speed_percent =
+            b_f64(StatBucket::BaseCooldownSpeedIncreasePrecent);
+        final_stat.skills.mana_cost_efficiency_percent =
+            b_f64(StatBucket::BaseManaCostEfficiencyPrecent);
+        final_stat.skills.life_cost_efficiency_percent =
+            b_f64(StatBucket::BaseLifeCostEfficiencyPrecent);
+        final_stat.skills.rage_cost_efficiency_percent =
+            b_f64(StatBucket::BaseRageCostEfficiencyPrecent);
+        final_stat.skills.skill_cost_efficiency_percent =
+            b_f64(StatBucket::BaseSkillCostEfficiencyPrecent);
+        final_stat.skills.mana_reservation_efficiency_percent =
+            b_f64(StatBucket::BaseManaReservationEfficiencyPrecent);
+        final_stat.skills.spirit_reservation_efficiency_percent =
+            b_f64(StatBucket::BaseSpiritReservationEfficiencyPrecent);
+
+        final_stat.skills.increased_area_of_effect_percent =
+            b_f64(StatBucket::BaseSkillAreaOfEffectIncreasePrecent);
+        final_stat.skills.skill_effect_duration_percent =
+            b_f64(StatBucket::SkillEffectDurationIncreasePrecent);
+        final_stat.skills.additional_projectiles =
+            b(StatBucket::ChanceToFire1AdditionalProjectileWithRolloverWithBowAttacks);
+        final_stat.skills.additional_chains = b(StatBucket::AttackNumberOfAdditionalChains);
+        final_stat.skills.pierce_chance_percent = b_f64(StatBucket::BaseChanceToPierce);
+        final_stat.skills.projectile_speed_percent =
+            b_f64(StatBucket::BaseProjectileSpeedIncreasePrecent);
+        final_stat.skills.chance_to_not_consume_charges_percent =
+            b_f64(StatBucket::ChargeSkipConsumeChancePrecent);
+        final_stat
+            .skills
+            .chance_to_not_consume_exerted_attack_percent =
+            b_f64(StatBucket::ChanceToNotConsumeExertedAttack);
+
+        // Conditional
+        final_stat
+            .conditional
+            .added_fire_damage_if_blocked_recently
+            .min = b(StatBucket::MinimumAddedFireDamageIfBlockedRecently).max(0) as u64;
+        final_stat
+            .conditional
+            .added_fire_damage_if_blocked_recently
+            .max = b(StatBucket::MaximumAddedFireDamageIfBlockedRecently).max(0) as u64;
+        final_stat
+            .conditional
+            .es_recharge_rate_if_blocked_recently_percent =
+            b_f64(StatBucket::EnergyShieldRechargeRatePrecentIfBlockedRecently);
+        final_stat.conditional.damage_while_leeching_percent =
+            b_f64(StatBucket::DamagePrecentWhileLeeching);
+        final_stat.conditional.evasion_while_leeching_percent =
+            b_f64(StatBucket::EvasionRatingPrecentWhileLeeching);
+        final_stat.conditional.attack_damage_on_low_life_percent =
+            b_f64(StatBucket::AttackDamageIncreasePrecentWhenOnLowLife);
+        final_stat.conditional.attack_speed_on_full_life_percent =
+            b_f64(StatBucket::AttackSpeedIncreasePrecentWhenOnFullLife);
+        final_stat
+            .conditional
+            .attack_speed_if_not_hit_recently_percent =
+            b_f64(StatBucket::AttackSpeedIncreasePrecentIfNotBeenHitRecently);
+        final_stat.conditional.cast_speed_on_full_life_percent =
+            b_f64(StatBucket::CastSpeedPrecentWhenOnFullLife);
+        final_stat.conditional.cast_speed_on_low_life_percent =
+            b_f64(StatBucket::CastSpeedPrecentWhenOnLowLife);
+        final_stat.conditional.cast_speed_on_full_mana_percent =
+            b_f64(StatBucket::CastSpeedPrecentWhileOnFullMana);
+        final_stat
+            .conditional
+            .damage_against_rare_or_unique_enemies_percent =
+            b_f64(StatBucket::DamageToRareAndUniqueEnemiesIncreasePrecent);
+        final_stat.conditional.damage_against_marked_enemies_percent =
+            b_f64(StatBucket::DamagePrecentAgainstEnemiesMarkedByYou);
+        final_stat
+            .conditional
+            .crit_chance_against_marked_enemies_percent =
+            b_f64(StatBucket::CriticalStrikeChancePrecentVsMarkedEnemies);
+        final_stat.conditional.damage_while_missing_ward_percent = 0.0;
+        final_stat
+            .conditional
+            .attack_speed_while_missing_ward_percent =
+            b_f64(StatBucket::AttackSpeedIncreasePrecentWhileMissingWard);
+        final_stat.conditional.chaos_res_while_using_flask_percent =
+            b(StatBucket::ChaosResistancePrecentWhileUsingFlask) as f64;
+        final_stat.conditional.ele_penetration_during_flask_percent =
+            b_f64(StatBucket::ElementalPenetrationPrecentDuringFlaskEffect);
+
+        // Presence
+        final_stat.presence.area_percent = b_f64(StatBucket::PresenceAreaIncreasePrecent);
+        final_stat.presence.added_physical.min =
+            b(StatBucket::AlliesInPresenceAttackPhysicalMin).max(0) as u64;
+        final_stat.presence.added_physical.max =
+            b(StatBucket::AlliesInPresenceAttackPhysicalMax).max(0) as u64;
+        final_stat.presence.added_fire.min =
+            b(StatBucket::AlliesInPresenceAttackFireMin).max(0) as u64;
+        final_stat.presence.added_fire.max =
+            b(StatBucket::AlliesInPresenceAttackFireMax).max(0) as u64;
+        final_stat.presence.added_cold.min =
+            b(StatBucket::AlliesInPresenceAttackColdMin).max(0) as u64;
+        final_stat.presence.added_cold.max =
+            b(StatBucket::AlliesInPresenceAttackColdMax).max(0) as u64;
+        final_stat.presence.added_lightning.min =
+            b(StatBucket::AlliesInPresenceAttackLightningMin).max(0) as u64;
+        final_stat.presence.added_lightning.max =
+            b(StatBucket::AlliesInPresenceAttackLightningMax).max(0) as u64;
+        final_stat.presence.added_chaos.min =
+            b(StatBucket::AlliesInPresenceAttackChaosMin).max(0) as u64;
+        final_stat.presence.added_chaos.max =
+            b(StatBucket::AlliesInPresenceAttackChaosMax).max(0) as u64;
+        final_stat.presence.increased_damage_percent =
+            b_f64(StatBucket::AlliesInPresenceDamageIncreasePrecent);
+        final_stat.presence.increased_attack_speed_percent =
+            b_f64(StatBucket::AlliesInPresenceAttackSpeedIncreasePrecent);
+        final_stat.presence.increased_cast_speed_percent =
+            b_f64(StatBucket::AlliesInPresenceCastSpeedIncreasePrecent);
+        final_stat.presence.accuracy_rating = b(StatBucket::AlliesInPresenceAccuracyRating);
+        final_stat.presence.critical_strike_chance_percent =
+            b_f64(StatBucket::AlliesInPresenceCriticalStrikeChanceIncreasePrecent);
+        final_stat.presence.critical_strike_multiplier_percent =
+            b_f64(StatBucket::AlliesInPresenceCriticalStrikeMultiplierIncrease);
+        final_stat.presence.all_elemental_resistance_percent =
+            b_f64(StatBucket::AlliesInPresenceResistAllElementsIncreasePrecent);
+        final_stat.presence.life_regeneration_per_minute =
+            b(StatBucket::AlliesInPresenceLifeRegenPerMinute) as f64;
+    }
     fn add_stats_to_buckets(
         &self,
         stats: &AHashMap<(crate::ModType, u64), i64>,
@@ -947,6 +1419,119 @@ impl Poe2Finalizer {
                 "minion_armour_break_physical_damage_%_dealt_as_armour_break" => [MinionArmourBreakPhysicalDamagePrecent],
                 "minion_base_damaging_ailment_effect_+%" => [MinionBaseDamagingAilmentEffectPrecent],
                 "minion_chance_to_fire_1_additional_projectile_%_with_rollover" => [MinionChanceToFire1AdditionalProjectilePrecent],
+                "minion_command_skill_skill_speed_+%" => [MinionCommandSkillSkillSpeedPrecent],
+                "minion_commanded_skill_damage_+%" => [MinionCommandedSkillDamagePrecent],
+                "minion_cooldown_recovery_+%" => [MinionCooldownRecoveryPrecent],
+                "minion_damage_+%_if_enemy_hit_recently" => [MinionDamageIfEnemyHitRecentlyPrecent],
+                "minion_damage_+%_per_different_command_skills_used_in_last_15_seconds" => [MinionDamagePerDifferentCommandSkillUsedLast15SecondsPercent],
+                "minion_hit_damage_immobilisation_multiplier_+%" => [MinionHitDamageImmobilisationMultiplierPrecent],
+                "minion_melee_splash" => [MinionMeleeSplash],
+                "minion_movement_speed_+%" => [MinionMovementSpeedPrecent],
+                "minions_are_gigantic_if_have_revived_recently" => [MinionsAreGiganticIfHaveRevivedRecently],
+                "mod_granted_passive_hash_essence" => [ModGrantedPassiveHashEssence],
+                "movement_speed_+%_during_flask_effect" => [MovementSpeedDuringFlaskEffectPrecent],
+                "movement_speed_+%_per_poison_up_to_50%" => [MovementSpeedPerPoisonUpTo50Percent],
+                "movement_speed_+%_while_on_burning_chilled_shocked_ground" => [MovementSpeedWhileOnBurningChilledShockedGroundPrecent],
+                "nearby_enemies_chilled_on_block" => [NearbyEnemiesChilledOnBlock],
+                "non_skill_base_all_damage_%_to_gain_as_chaos_while_missing_ward" => [NonSkillBaseAllDamageToGainAsChaosWhileMissingWardPrecent],
+                "non_skill_base_all_damage_%_to_gain_as_cold_while_missing_ward" => [NonSkillBaseAllDamageToGainAsColdWhileMissingWardPrecent],
+                "non_skill_base_all_damage_%_to_gain_as_chaos_with_spells" => [NonSkillBaseAllDamageToGainAsChaosWithSpellsPrecent],
+                "non_skill_base_all_damage_%_to_gain_as_cold_with_attacks" => [NonSkillBaseAllDamageToGainAsColdWithAttacksPrecent],
+                "non_skill_base_all_damage_%_to_gain_as_cold_with_spells" => [NonSkillBaseAllDamageToGainAsColdWithSpellsPrecent],
+                "non_skill_base_all_damage_%_to_gain_as_fire_while_missing_ward" => [NonSkillBaseAllDamageToGainAsFireWhileMissingWardPrecent],
+                "non_skill_base_all_damage_%_to_gain_as_fire_with_attacks" => [NonSkillBaseAllDamageToGainAsFireWithAttacksPrecent],
+                "non_skill_base_all_damage_%_to_gain_as_fire_with_spells" => [NonSkillBaseAllDamageToGainAsFireWithSpellsPrecent],
+                "non_skill_base_all_damage_%_to_gain_as_lightning_while_missing_ward" => [NonSkillBaseAllDamageToGainAsLightningWhileMissingWardPrecent],
+                "non_skill_base_all_damage_%_to_gain_as_lightning_with_spells" => [NonSkillBaseAllDamageToGainAsLightningWithSpellsPrecent],
+                "non_skill_base_all_damage_%_to_gain_as_lightning_with_attacks" => [NonSkillBaseAllDamageToGainAsLightningWithAttacksPrecent],
+                "non_skill_base_all_damage_%_to_gain_as_chaos_with_attacks" => [NonSkillBaseAllDamageToGainAsChaosWithAttacksPrecent],
+                "non_skill_base_all_damage_%_to_gain_as_chaos_with_spells" => [NonSkillBaseAllDamageToGainAsChaosWithSpellsPrecent],
+                "non_skill_base_all_damage_%_to_gain_as_physical" => [NonSkillBaseAllDamageToGainAsPhysicalPrecent],
+                "non_skill_base_all_damage_%_to_gain_as_physical_with_attacks" => [NonSkillBaseAllDamageToGainAsPhysicalWithAttacksPrecent],
+                "non_skill_base_elemental_damage_%_to_gain_as_cold" => [NonSkillBaseElementalDamageToGainAsColdPrecent],
+                "non_skill_base_physical_damage_%_to_gain_as_cold" => [NonSkillBasePhysicalDamageToGainAsColdPrecent],
+                "non_skill_base_physical_damage_%_to_gain_as_cold_vs_dazed_enemies" => [NonSkillBasePhysicalDamageToGainAsColdVsDazedEnemiesPrecent],
+                "non_skill_base_physical_damage_%_to_gain_as_fire" => [NonSkillBasePhysicalDamageToGainAsFirePrecent],
+                "non_skill_lightning_damage_%_to_convert_to_chaos_with_attacks" => [NonSkillLightningDamageToConvertToChaosWithAttacksPrecent],
+                "non_skill_physical_damage_%_to_gain_as_fire_per_rage" => [NonSkillPhysicalDamageToGainAsFirePerRagePrecent],
+                "number_of_additional_curses_allowed" => [NumberOfAdditionalCursesAllowed],
+                "offering_spells_effect_+%" => [OfferingSpellsEffectPrecent],
+                "physical_damage_taken_%_as_chaos" => [PhysicalDamageTakenAsChaosPrecent],
+                "physical_damage_taken_%_as_cold" => [PhysicalDamageTakenAsColdPrecent],
+                "physical_damage_taken_%_as_fire" => [PhysicalDamageTakenAsFirePrecent],
+                "physical_damage_to_return_to_melee_attacker" => [PhysicalDamageToReturnToMeleeAttackerFlat],
+                "physical_dot_multiplier_+" => [PhysicalDotMultiplierAdd],
+                "physical_hit_and_dot_damage_%_taken_as_lightning_while_active_blocking" => [PhysicalHitAndDotDamageTakenAsLightningWhileActiveBlockingPrecent],
+                "poison_chance_+%" => [PoisonChancePrecent],
+                "poison_on_critical_strike" => [PoisonOnCriticalStrike],
+                "poison_reflected_to_self" => [PoisonReflectedToSelf],
+                "power_charge_on_block_%_chance" => [PowerChargeOnBlockPrecent],
+                "power_frenzy_or_endurance_charge_on_kill_%" => [PowerFrenzyOrEnduranceChargeOnKillPrecent],
+                "projectile_attacks_%_chance_to_fire_2_additional_projectiles_while_moving" => [ProjectileAttacksPrecent],
+                "projectile_base_number_of_targets_to_pierce" => [ProjectileBaseNumberOfTargetsToPierce],
+                "projectile_chance_to_fork_%" => [ProjectileChanceToForkPrecent],
+                "projectile_damage_+%_per_power_charge" => [ProjectileDamagePrecent],
+                "projectile_damage_+%_vs_enemies_further_than_6m_distance" => [ProjectileDamageVsEnemiesFurtherThan6mDistancePrecent],
+                "projectile_damage_+%_vs_enemies_within_2m_distance" => [ProjectileDamageVsEnemiesWithin2mDistancePrecent],
+                "projectile_shock_chance_%" => [ProjectileShockChancePrecent],
+                "projectiles_fork_chance_%_if_youve_dealt_melee_hit_recently" => [ProjectilesForkChancePrecent],
+                "rage_loss_delay_ms_+" => [RageLossDelayMsPrecent],
+                "recoup_%_elemental_damage_as_energy_shield" => [RecoupElementalDamageAsEnergyShieldPrecent],
+                "recover_%_maximum_life_when_spending_at_least_10_combo" => [RecoverMaximumLifeWhenSpendingAtLeast10ComboPrecent],
+                "recover_%_maximum_mana_on_kill" => [RecoverMaximumManaOnKillPrecent],
+                "recover_%_maximum_mana_when_spending_at_least_10_combo" => [RecoverMaximumManaWhenSpendingAtLeast10ComboPrecent],
+                "recover_10%_of_maximum_mana_on_skill_use_%" => [Recover10PercentOfMaximumManaOnSkillUsePrecent],
+                "recover_X_ward_on_block" => [RecoverXWardOnBlockPrecent],
+                "recover_X_ward_on_charm_use" => [RecoverXWardOnCharmUsePrecent],
+                "recover_mana_%_on_enemy_death_in_presence" => [RecoverManaOnEnemyDeathInPresencePrecent],
+                "reduce_enemy_chaos_resistance_with_weapons_%" => [ReduceEnemyChaosResistanceWithWeaponsPrecent],
+                "reduce_enemy_elemental_resistance_%" => [ReduceEnemyElementalResistancePrecent],
+                "reflect_damage_taken_and_minion_reflect_damage_taken_+%" => [ReflectDamageTakenAndMinionReflectDamageTakenPrecent],
+                "remnant_effect_+%" => [RemnantEffectPrecent],
+                "remnant_pickup_range_+%" => [RemnantPickupRangePrecent],
+                "reservation_efficiency_+%_of_companion_skills" => [ReservationEfficiencyPrecent],
+                "reservation_efficiency_+%_of_herald_skills" => [ReservationEfficiencyOfHeraldPrecent],
+                "reservation_efficiency_+%_of_minion_skills" => [ReservationEfficiencyOfMinionPrecent],
+                "restore_life_on_warcry_%" => [RestoreLifeOnWarcryPrecent],
+                "seal_gain_frequency_+%" => [SealGainFrequencyPrecent],
+                "shock_effect_+%_if_consumed_frenzy_charge_recently" => [ShockEffectPrecent],
+                "skill_additional_fissure_chance_%" => [SkillAdditionalFissureChancePrecent],
+                "skill_speed_+%" => [SkillSpeedPrecent],
+                "skill_speed_+%_if_consumed_frenzy_charge_recently" => [SkillSpeedPrecent],
+                "slow_potency_+%_if_you_have_used_a_charm_recently" => [SlowPotencyPrecent],
+                "spell_area_of_effect_+%" => [SpellAreaOfEffectPrecent],
+                "spell_damage_+%_during_mana_flask_effect" => [SpellDamagePrecentDuringManaFlaskEffect],
+                "spell_damage_+%_per_100_max_life" => [SpellDamagePrecentPer100MaxLife],
+                "spell_damage_+%_per_100_maximum_mana" => [SpellDamagePrecentPer100MaxMana],
+                "spell_damage_+%_while_es_full" => [SpellDamagePrecentWhileEsFull],
+                "spell_damage_+%_while_wielding_melee_weapon" => [SpellDamagePrecentWhileWieldingMeleeWeapon],
+                "spell_damage_+%_with_spells_that_cost_life" => [SpellDamagePrecentWithSpellsThatCostLife],
+                "spell_elemental_ailment_magnitude_+%" => [SpellElementalAilmentMagnitudePrecent],
+                "spell_impale_magnitude_+%" => [SpellImpaleMagnitudePrecent],
+                "spell_maximum_added_cold_damage" => [SpellMaximumAddedColdDamage],
+                "spell_maximum_added_fire_damage" => [SpellMaximumAddedFireDamage],
+                "spell_maximum_added_lightning_damage" => [SpellMaximumAddedLightningDamage],
+                "spell_maximum_added_chaos_damage" => [SpellMaximumAddedChaosDamage],
+                "spell_minimum_added_cold_damage" => [SpellMinimumAddedColdDamage],
+                "spell_minimum_added_fire_damage" => [SpellMinimumAddedFireDamage],
+                "spell_minimum_added_lightning_damage" => [SpellMinimumAddedLightningDamage],
+                "spell_minimum_added_chaos_damage" => [SpellMinimumAddedChaosDamage],
+                "spell_skills_additional_totems_allowed" => [SpellSkillsAdditionalTotemsAllowed],
+                "spell_skills_fire_2_additional_projectiles_final_chance_%" => [SpellSkillsFire2AdditionalProjectilesFinalChancePrecent],
+                "spirit_+%" => [SpiritMagnitudePrecent],
+                "sprint_movement_speed_+%" => [SprintMovementSpeedPrecent],
+                "strength_and_dexterity_+%" => [StrengthAndDexterityPrecent],
+                "strength_and_intelligence_+%" => [StrengthAndIntelligencePrecent],
+                "surpassing_chance_%_to_gain_1_puppeteer_stack_on_using_command_skill" => [SurpassingChancePrecent],
+                "temporary_minion_limit_+" => [TemporaryMinionLimitAdds],
+                "thorns_maximum_fire_damage_per_100_life" => [ThornsMaximumFireDamagePer100Life],
+                "thorns_minimum_fire_damage_per_100_life" => [ThornsMinimumFireDamagePer100Life],
+                "unique_gain_onslaught_when_hit_duration_ms" => [UniqueGainOnslaughtWhenHitDurationMs],
+                "warcry_monster_power_+%" => [WarCryMonsterPowerPrecent],
+                "warcry_skill_area_of_effect_+%" => [WarCrySkillAreaOfEffectPrecent],
+                "your_mace_slam_aftershock_chance_%" => [YourMaceSlamAftershockChancePrecent],
+                "your_marks_spread_to_a_nearby_enemies_on_consume_%_chance" => [YourMarksSpreadToNearbyEnemiesOnConsumePrecent],
+                "parried_magnitude_+%" => [ParriedMagnitudePrecent],
 
                 }
         })
@@ -963,11 +1548,8 @@ impl EffectAccumulatorFinalizer for Poe2Finalizer {
         let buckets_by_id = Self::get_bucket_mapping();
 
         let bucket_totals = self.finalize_by_bucket(&acc, buckets_by_id);
-
-        // Example of applying a bucket total to the final stat:
-        if let Some(&_chaos_dmg) = bucket_totals.get(&StatBucket::ChaosDamagePercent) {
-            // final_stat.offense.chaos_damage_percent += chaos_dmg;
-        }
+        final_stat.buckets = bucket_totals;
+        self.populate_from_buckets(&mut final_stat);
 
         // 2. Resolve global stats via the stat_balancer.rs ModType definitions (for complex/conditional mods)
         for ((mod_type, stat_id), value) in acc.global_stats.iter() {

@@ -4,10 +4,7 @@ use exile_core::effect::EffectAccumulatorFactory;
 use crate::{
     ModType,
     calculation::accumulator::{LocalItemStats, Poe2Accumulator},
-    item::{
-        base::Poe2CharacterBase,
-        state::{EquipSlot, StatBucket},
-    },
+    item::{base::Poe2CharacterBase, state::EquipSlot},
     repoe_parse::Properties,
 };
 

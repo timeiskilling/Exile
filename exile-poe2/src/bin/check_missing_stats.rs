@@ -47,22 +47,36 @@ fn main() {
     let mut all_stats: BTreeMap<String, StatInfo> = BTreeMap::new();
     for (mod_name, mod_data) in &raw_mods {
         let is_valid_domain = mod_data.domain == "item" || mod_data.domain == "desecrated";
-        let is_valid_gen_type = mod_data.generation_type == "prefix"
-            || mod_data.generation_type == "suffix"
-            /*|| mod_data.generation_type == "unique"*/;
+        let is_valid_gen_type =
+            mod_data.generation_type == "prefix" || mod_data.generation_type == "suffix";
 
-        if is_valid_domain && is_valid_gen_type {
+        // Filter out legacy PoE1 maps, heist enchantments, etc.
+        let mod_type_str = mod_data.r#type.as_deref().unwrap_or_default();
+        let is_map = mod_name.starts_with("Map") || mod_type_str.starts_with("Map");
+        let is_heist = mod_name.contains("Heist") || mod_type_str.contains("Heist");
+
+        if is_valid_domain && is_valid_gen_type && !is_map && !is_heist {
             for s in &mod_data.stats {
-                all_stats.entry(s.id.clone()).or_insert_with(|| StatInfo {
-                    sample_text: mod_data
-                        .text
-                        .clone()
-                        .unwrap_or_default()
-                        .replace('\n', " // "),
-                    sample_mod: mod_name.clone(),
-                    domain: mod_data.domain.clone(),
-                    mod_type: mod_data.r#type.clone().unwrap_or_default(),
-                });
+                // Filter out legacy stat IDs
+                let is_legacy = s.id.starts_with("map_")
+                    || s.id.starts_with("heist_")
+                    || s.id.contains("socketed_")
+                    || s.id.contains("socketed_gems")
+                    || s.id.contains("socketed_aura_gem")
+                    || s.id.contains("socketed_support_gem");
+
+                if !is_legacy {
+                    all_stats.entry(s.id.clone()).or_insert_with(|| StatInfo {
+                        sample_text: mod_data
+                            .text
+                            .clone()
+                            .unwrap_or_default()
+                            .replace('\n', " // "),
+                        sample_mod: mod_name.clone(),
+                        domain: mod_data.domain.clone(),
+                        mod_type: mod_data.r#type.clone().unwrap_or_default(),
+                    });
+                }
             }
         }
     }
