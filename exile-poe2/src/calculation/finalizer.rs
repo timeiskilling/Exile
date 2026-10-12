@@ -486,8 +486,6 @@ pub struct Poe2Finalizer;
 
 impl Poe2Finalizer {
     fn populate_from_buckets(&self, final_stat: &mut Poe2FinalStat) {
-        // Create a copy of the buckets map so we don't hold a reference to `final_stat`
-        // while trying to mutate other fields on it.
         let buckets = final_stat.buckets.clone();
 
         let b = |bucket: StatBucket| -> i64 { buckets.get(&bucket).copied().unwrap_or(0) };

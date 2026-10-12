@@ -763,7 +763,7 @@ pub struct Poe2ModifierStat {
     pub is_local: bool,
     pub kind: Poe2StatModifierKind,
     pub phase: Poe2EffectPhase,
-    pub buckets: Vec<StatBucket>,
+    // pub buckets: Vec<StatBucket>,
     pub conflict_key: Option<Poe2ConflictKey>,
     pub selection_key: Option<Poe2SelectionKey>,
 }
