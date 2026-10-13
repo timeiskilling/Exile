@@ -709,25 +709,6 @@ pub fn stat_id_to_bucket(stat_id: &str) -> Option<StatBucket> {
     }
 }
 
-pub fn classify_bucket(tags: &[String]) -> Option<StatBucket> {
-    const RULES: &[(&str, StatBucket)] = &[
-        ("fire_resistance", StatBucket::FireResistance),
-        ("cold_resistance", StatBucket::ColdResistance),
-        ("lightning_resistance", StatBucket::LightningResistance),
-        ("chaos_resistance", StatBucket::ChaosResistance),
-        ("energy_shield", StatBucket::EnergyShield),
-        ("life", StatBucket::Life),
-        ("mana", StatBucket::Mana),
-        ("armour", StatBucket::Armour),
-        ("evasion", StatBucket::Evasion),
-        ("block", StatBucket::Block),
-    ];
-    RULES
-        .iter()
-        .find(|(tag, _)| tags.iter().any(|t| t == tag))
-        .map(|(_, b)| *b)
-}
-
 #[derive(Debug, Clone)]
 pub struct Poe2ItemState {
     pub item_level: u16,

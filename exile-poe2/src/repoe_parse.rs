@@ -18,8 +18,8 @@ struct Class {
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct MinMax {
-    min: u32,
-    max: u32,
+    pub min: u32,
+    pub max: u32,
 }
 
 #[derive(Debug, Deserialize, Default, Clone)]

@@ -1,0 +1,29 @@
+Rarity: Rare
+Mind Pile
+Sinister Quarterstaff
+--------
+Quality: +20% (augmented)
+Physical Damage: 66-109 (augmented)
+Elemental Damage: 136-228
+Critical Hit Chance: 16.89% (augmented)
+Attacks per Second: 1.75 (augmented)
+--------
+Requires: Level 67, 104 Dex, 41 Int
+--------
+Sockets: S S S
+--------
+Item Level: 82
+--------
++1 Suffix Modifier allowed (rune)
+50% increased Attack Damage against Rare or Unique Enemies (rune)
+Gain 5% of Damage as Extra Damage of all Elements (rune)
+Bonded: +1 to Level of all Attack Skills (rune)
+Bonded: 8% chance to gain an additional random Charge when you gain a Charge (rune)
+--------
+25% increased Attack Speed (fractured)
+Adds 136 to 228 Fire Damage
+Adds 122 to 182 Cold Damage
+135% increased Elemental Damage with Attacks
++4.89% to Critical Hit Chance
++18% to Critical Damage Bonus (desecrated)
++3 to Level of all Attack Skills (crafted)
