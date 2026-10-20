@@ -7,7 +7,7 @@ use serde::{Deserialize, Deserializer, Serialize};
 
 use crate::ModType;
 
-type Poe2Item = HashMap<String, Item>;
+pub type Poe2Item = HashMap<String, Item>;
 
 struct Class {
     category: String,
@@ -107,6 +107,9 @@ pub struct Item {
     pub tags: HashSet<String>,
     pub implicits: Vec<String>,
     pub visual_identity: VisualIdentity,
+    pub item_class: ItemClass,
+    pub release_state: Option<String>,
+    pub grants_buff: Option<serde_json::Value>,
 }
 
 struct Items {

@@ -700,15 +700,6 @@ pub enum StatBucket {
     YourMarksSpreadToNearbyEnemiesOnConsumePrecent,
 }
 
-pub fn stat_id_to_bucket(stat_id: &str) -> Option<StatBucket> {
-    match stat_id {
-        "chaos_damage_+%" => Some(StatBucket::ChaosDamagePercent),
-        "additional_strength" => Some(StatBucket::Strength),
-
-        _ => None,
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct Poe2ItemState {
     pub item_level: u16,

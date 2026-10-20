@@ -5,7 +5,7 @@ use crate::{
     },
     poe2_condition::parse_condition,
     poe2_scaling::parse_scaling,
-    repoe_parse::{HashedTagWeight, RawModsFile},
+    repoe_parse::{HashedTagWeight, Poe2Item, RawModsFile},
 };
 use std::collections::{HashMap, HashSet};
 
@@ -124,7 +124,6 @@ impl Poe2DefinitionRegistry {
                         phase,
                         conflict_key: None,
                         selection_key: None,
-                        // buckets,
                     }
                 })
                 .collect();
@@ -169,4 +168,25 @@ impl Poe2DefinitionRegistry {
     pub fn lookup_string(&self, hash: u64) -> Option<&String> {
         self.string_dictionary.get(&hash)
     }
+}
+
+pub struct ItemRegistry {
+    items: Poe2Item,
+}
+
+impl ItemRegistry {
+    fn new() -> Self {
+        let manifest_dir = env!("CARGO_MANIFEST_DIR");
+        let file_path = format!("{}/data/base_items.json", manifest_dir);
+        let file = std::fs::File::open(file_path).expect("Invalid in opening file");
+        let reader = std::io::BufReader::new(file);
+        let raw_map: Poe2Item = serde_json::from_reader(reader).expect("invalid json data");
+        let items = raw_map
+            .into_iter()
+            .map(|(_path, item)| (item.name.clone(), item))
+            .collect();
+        Self { items }
+    }
+
+    pub fn get_tags()
 }

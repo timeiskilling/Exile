@@ -117,16 +117,16 @@ pub struct StatMatcher {
 }
 
 impl StatMatcher {
-    // pub fn global() -> &'static Self {
-    //     static M: OnceLock<StatMatcher> = OnceLock::new();
-    //     M.get_or_init(|| {
-    //         let mut by_key: AHashMap<&'static str, Vec<&'static Template>> = AHashMap::new();
-    //         for t in crate::generated::stat_templates::TEMPLATES {
-    //             by_key.entry(t.key).or_default().push(t);
-    //         }
-    //         StatMatcher { by_key }
-    //     })
-    // }
+    pub fn global() -> &'static Self {
+        static M: OnceLock<StatMatcher> = OnceLock::new();
+        M.get_or_init(|| {
+            let mut by_key: AHashMap<&'static str, Vec<&'static Template>> = AHashMap::new();
+            for t in crate::generated::stat_templates::TEMPLATES {
+                by_key.entry(t.key).or_default().push(t);
+            }
+            StatMatcher { by_key }
+        })
+    }
 
     pub fn templates_for(&self, key: &str) -> &[&'static Template] {
         self.by_key.get(key).map(|v| v.as_slice()).unwrap_or(&[])

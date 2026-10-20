@@ -2,6 +2,7 @@ pub mod calculation;
 pub mod constant;
 pub mod effect;
 pub mod error;
+pub mod generated;
 pub mod item;
 pub mod parser;
 pub mod poe2_condition;
