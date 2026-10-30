@@ -5,10 +5,10 @@ use crate::{
     },
     poe2_condition::parse_condition,
     poe2_scaling::parse_scaling,
-    repoe_parse::{HashedTagWeight, Poe2Item, RawModsFile},
+    repoe_parse::{Domain, HashedTagWeight, Item, ItemDomain, Poe2Item, RawModsFile},
 };
+use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
-
 fn find_valid_split(
     raw_id: &str,
     marker: &str,
@@ -102,7 +102,7 @@ impl Poe2DefinitionRegistry {
             let stats = raw_mod
                 .stats
                 .into_iter()
-                .map(|s| {
+                .map(|s| -> Poe2ModifierStat {
                     let (clean_id, kind) = extract_condition_or_scaling(&s.id, &known_stat_ids);
                     let phase = classify_phase(clean_id);
                     // let buckets = classify_buckets(&raw_mod.implicit_tags, clean_id);
@@ -117,6 +117,7 @@ impl Poe2DefinitionRegistry {
 
                     Poe2ModifierStat {
                         id_hash: stat_hash,
+                        raw_id_hash: hash_string(&s.id),
                         min: s.min,
                         max: s.max,
                         is_local: clean_id.starts_with("local_"),
@@ -155,6 +156,7 @@ impl Poe2DefinitionRegistry {
                 groups,
                 spawn_weights,
                 generation_type: raw_mod.generation_type,
+                domain: raw_mod.domain,
             };
             definitions.insert(id, def);
         }
@@ -167,6 +169,24 @@ impl Poe2DefinitionRegistry {
 
     pub fn lookup_string(&self, hash: u64) -> Option<&String> {
         self.string_dictionary.get(&hash)
+    }
+
+    pub fn mods_by_tags(&self, item: &Item) -> Vec<(&Poe2ModifierDefinition, u32)> {
+        let tags: HashSet<u64> = item.tags.iter().map(|tag| hash_string(tag)).collect();
+
+        self.definitions
+            .values()
+            .filter(|d| {
+                matches!(
+                    d.domain,
+                    Domain::Item | Domain::Desecrated | Domain::Crafted
+                )
+            })
+            .filter_map(|d| {
+                let w = d.spawn_weight(&tags);
+                (w > 0).then_some((d, w))
+            })
+            .collect()
     }
 }
 
@@ -181,12 +201,30 @@ impl ItemRegistry {
         let file = std::fs::File::open(file_path).expect("Invalid in opening file");
         let reader = std::io::BufReader::new(file);
         let raw_map: Poe2Item = serde_json::from_reader(reader).expect("invalid json data");
-        let items = raw_map
-            .into_iter()
-            .map(|(_path, item)| (item.name.clone(), item))
-            .collect();
+        let mut entries: Vec<_> = raw_map.into_iter().collect();
+        entries.sort_by(|a, b| a.0.cmp(&b.0));
+
+        let mut items: HashMap<String, Item> = HashMap::new();
+
+        _ = for (path, item) in entries {
+            if item.domain != ItemDomain::Item {
+                continue;
+            }
+            match items.entry(item.name.clone()) {
+                Entry::Vacant(e) => {
+                    e.insert(item);
+                }
+                Entry::Occupied(_) => {
+                    eprintln!("duplicate base name {:?} at {path}", item.name);
+                    debug_assert!(false, "duplicate base name {:?}", item.name);
+                }
+            }
+        };
+
         Self { items }
     }
 
-    pub fn get_tags()
+    pub fn get_item(&self, item_name: &str) -> Option<&Item> {
+        self.items.get(item_name)
+    }
 }

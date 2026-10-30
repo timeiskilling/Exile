@@ -2,7 +2,9 @@ use crate::ModType;
 use crate::effect::planning::{Poe2ConflictKey, Poe2EffectPhase, Poe2SelectionKey};
 use crate::poe2_condition::Poe2Condition;
 use crate::poe2_scaling::Poe2Scaling;
-use crate::repoe_parse::{GenerationType, HashedTagWeight, ItemClass, Properties, Requirements};
+use crate::repoe_parse::{
+    Domain, GenerationType, HashedTagWeight, ItemClass, Properties, Requirements,
+};
 use ahash::AHasher;
 use ahash::HashSet;
 use exile_core::game::{Game, ModifierDefinitionIdentity};
@@ -16,12 +18,25 @@ pub fn hash_string(s: &str) -> u64 {
 
 pub struct Poe2;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Copy)]
 pub enum ItemRarity {
     Normal,
     Magic,
     Rare,
     Unique,
+    Unknown,
+}
+
+impl ItemRarity {
+    pub fn parse(s: &str) -> Self {
+        match s.trim() {
+            "Normal" => ItemRarity::Normal,
+            "Magic" => ItemRarity::Magic,
+            "Rare" => ItemRarity::Rare,
+            "Unique" => ItemRarity::Unique,
+            _ => ItemRarity::Unknown,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -718,18 +733,20 @@ pub struct Poe2ItemState {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Copy)]
 pub struct Poe2ModifierId(pub u64);
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Copy)]
 pub enum ModOrigin {
     Crafted,
     Fractured,
     Rune,
     Dropped,
     Corrupted,
+    Desecrated,
 }
 
 #[derive(Debug, Clone)]
 pub struct Poe2ModifierStat {
     pub id_hash: u64,
+    pub raw_id_hash: u64,
     pub min: i64,
     pub max: i64,
     pub is_local: bool,
@@ -748,7 +765,17 @@ pub struct Poe2ModifierDefinition {
     pub stats: Vec<Poe2ModifierStat>,
     pub groups: Vec<u64>,
     pub spawn_weights: Vec<HashedTagWeight>,
+    pub domain: Domain,
     pub generation_type: GenerationType,
+}
+
+impl Poe2ModifierDefinition {
+    pub fn spawn_weight(&self, item_tags: &std::collections::HashSet<u64>) -> u32 {
+        self.spawn_weights
+            .iter()
+            .find(|w| item_tags.contains(&w.tag))
+            .map_or(0, |w| w.weight)
+    }
 }
 
 impl ModifierDefinitionIdentity for Poe2ModifierDefinition {
