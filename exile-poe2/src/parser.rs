@@ -235,10 +235,28 @@ impl ItemTextParser<Poe2> for Poe2NinjaTextParser {
 
                 let stats = self
                     .matcher
-                    .parse_line(&line, |id| pool.contains(&hash_string(id)))
-                    .or_else(|| {
-                        let mut all = self.matcher.parse_all(&line);
-                        if all.len() == 1 { all.pop() } else { None }
+                    .parse_all(&line)
+                    .into_iter()
+                    .find(|parsed_stats| {
+                        candidates.iter().any(|(definition, _)| {
+                            let mut used_definition_stats = vec![false; definition.stats.len()];
+
+                            parsed_stats.iter().all(|parsed_stat| {
+                                definition.stats.iter().enumerate().any(
+                                    |(index, definition_stat)| {
+                                        if !used_definition_stats[index]
+                                            && definition_stat.raw_id_hash
+                                                == hash_string(parsed_stat.id)
+                                        {
+                                            used_definition_stats[index] = true;
+                                            true
+                                        } else {
+                                            false
+                                        }
+                                    },
+                                )
+                            })
+                        })
                     });
 
                 let Some(stats) = stats else {
