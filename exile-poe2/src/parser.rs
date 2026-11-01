@@ -1,7 +1,5 @@
 use std::sync::Arc;
 
-use ahash::HashSet;
-
 use exile_core::item::{ItemInstance, ItemTextParser, Unvalidated};
 
 use crate::{
@@ -205,11 +203,6 @@ impl ItemTextParser<Poe2> for Poe2NinjaTextParser {
 
         let candidates = self.defs.mods_by_tags(item);
 
-        let pool: HashSet<u64> = candidates
-            .iter()
-            .flat_map(|(definition, _)| definition.stats.iter().map(|stat| stat.raw_id_hash))
-            .collect();
-
         let sections: Vec<&str> = text.split("--------").collect();
 
         let start = sections
@@ -239,23 +232,7 @@ impl ItemTextParser<Poe2> for Poe2NinjaTextParser {
                     .into_iter()
                     .find(|parsed_stats| {
                         candidates.iter().any(|(definition, _)| {
-                            let mut used_definition_stats = vec![false; definition.stats.len()];
-
-                            parsed_stats.iter().all(|parsed_stat| {
-                                definition.stats.iter().enumerate().any(
-                                    |(index, definition_stat)| {
-                                        if !used_definition_stats[index]
-                                            && definition_stat.raw_id_hash
-                                                == hash_string(parsed_stat.id)
-                                        {
-                                            used_definition_stats[index] = true;
-                                            true
-                                        } else {
-                                            false
-                                        }
-                                    },
-                                )
-                            })
+                            definition_accepts_parsed_stats(definition, parsed_stats)
                         })
                     });
 
@@ -323,18 +300,22 @@ fn domain_ok(d: Domain, origin: ModOrigin) -> bool {
 }
 
 fn match_def(def: &Poe2ModifierDefinition, left: &[(u64, i64)]) -> Option<Vec<usize>> {
-    let mut picked: Vec<usize> = Vec::with_capacity(def.stats.len());
-    for st in &def.stats {
-        let (lo, hi) = (st.min.min(st.max), st.min.max(st.max));
-        let i = (0..left.len()).find(|&i| {
-            let (h, v) = left[i];
-            h == st.raw_id_hash && (lo..=hi).contains(&v) && !picked.contains(&i)
-        })?;
-        picked.push(i);
-    }
-    (!picked.is_empty()).then_some(picked)
-}
+    match_unique_indices(
+        def.stats.len(),
+        left.len(),
+        |definition_index, left_index| {
+            let definition_stat = &def.stats[definition_index];
+            let (hash, value) = left[left_index];
 
+            let (lo, hi) = (
+                definition_stat.min.min(definition_stat.max),
+                definition_stat.min.max(definition_stat.max),
+            );
+
+            hash == definition_stat.raw_id_hash && (lo..=hi).contains(&value)
+        },
+    )
+}
 pub struct ResolveModsResult(Vec<(Poe2ModifierId, Poe2ModifierInstance)>, Vec<(u64, i64)>);
 
 pub fn resolve_mods(
@@ -408,6 +389,47 @@ fn parse_requirements(line: &str) -> Requirements {
         }
     }
     req
+}
+
+fn definition_accepts_parsed_stats(
+    definition: &Poe2ModifierDefinition,
+    parsed_stats: &[ParsedStat],
+) -> bool {
+    match_unique_indices(
+        parsed_stats.len(),
+        definition.stats.len(),
+        |parsed_index, definition_index| {
+            let parsed_stat = &parsed_stats[parsed_index];
+            let definition_stat = &definition.stats[definition_index];
+
+            definition_stat.raw_id_hash == hash_string(parsed_stat.id)
+        },
+    )
+    .is_some()
+}
+
+fn match_unique_indices(
+    source_len: usize,
+    target_len: usize,
+    mut is_match: impl FnMut(usize, usize) -> bool,
+) -> Option<Vec<usize>> {
+    if source_len == 0 || source_len > target_len {
+        return None;
+    }
+
+    let mut used_targets = vec![false; target_len];
+    let mut matched_indices = Vec::with_capacity(source_len);
+
+    for source_index in 0..source_len {
+        let target_index = (0..target_len).find(|&target_index| {
+            !used_targets[target_index] && is_match(source_index, target_index)
+        })?;
+
+        used_targets[target_index] = true;
+        matched_indices.push(target_index);
+    }
+
+    Some(matched_indices)
 }
 
 fn determine_class_and_slot(base_name: &str, props: &Properties) -> (ItemClass, EquipSlot) {

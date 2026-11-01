@@ -195,7 +195,7 @@ pub struct ItemRegistry {
 }
 
 impl ItemRegistry {
-    fn new() -> Self {
+    pub fn new() -> Self {
         let manifest_dir = env!("CARGO_MANIFEST_DIR");
         let file_path = format!("{}/data/base_items.json", manifest_dir);
         let file = std::fs::File::open(file_path).expect("Invalid in opening file");
@@ -206,7 +206,7 @@ impl ItemRegistry {
 
         let mut items: HashMap<String, Item> = HashMap::new();
 
-        _ = for (path, item) in entries {
+        for (path, item) in entries {
             if item.domain != ItemDomain::Item {
                 continue;
             }
@@ -219,7 +219,7 @@ impl ItemRegistry {
                     debug_assert!(false, "duplicate base name {:?}", item.name);
                 }
             }
-        };
+        }
 
         Self { items }
     }
